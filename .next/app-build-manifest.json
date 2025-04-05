@@ -6,26 +6,6 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
-    "/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/page.js"
-    ],
-    "/master/stores/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/master/stores/page.js"
-    ],
-    "/master/vendors/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/master/vendors/page.js"
-    ],
-    "/management/others/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/management/others/page.js"
-    ],
     "/management/sales/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
@@ -41,10 +21,10 @@
       "static/chunks/main-app.js",
       "static/chunks/app/management/expenses/page.js"
     ],
-    "/dev/test/page": [
+    "/management/others/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/dev/test/page.js"
+      "static/chunks/app/management/others/page.js"
     ]
   }
 }

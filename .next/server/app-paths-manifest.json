@@ -1,10 +1,6 @@
 {
-  "/management/others/page": "app/management/others/page.js",
+  "/management/purchases/page": "app/management/purchases/page.js",
   "/management/sales/page": "app/management/sales/page.js",
   "/management/expenses/page": "app/management/expenses/page.js",
-  "/dev/test/page": "app/dev/test/page.js",
-  "/management/purchases/page": "app/management/purchases/page.js",
-  "/master/stores/page": "app/master/stores/page.js",
-  "/page": "app/page.js",
-  "/master/vendors/page": "app/master/vendors/page.js"
+  "/management/others/page": "app/management/others/page.js"
 }

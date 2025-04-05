@@ -19,7 +19,7 @@ interface StoreData {
 }
 
 const columnMapping: { [key: string]: string } = {
-  store_id: '점포명',
+  store_id: '점포',
   category: '구분',
   vendor_name: '거래처명',
   bank_account: '계좌번호',
@@ -28,10 +28,10 @@ const columnMapping: { [key: string]: string } = {
 
 const columnStyles: { [key: string]: string } = {
   store_id: 'col-name',
-  category: 'col-name',
+  category: 'col-date',
   vendor_name: 'col-name',
-  bank_account: 'col-number',
-  business_number: 'col-number'
+  bank_account: 'col-account',
+  business_number: 'col-business-num'
 };
 
 export default function VendorsPage() {
@@ -57,28 +57,21 @@ export default function VendorsPage() {
         const { data: vendorsData, error: vendorsError } = await supabase
           .from('vendors')
           .select('*')
+          .order('store_id')
           .then(result => {
-            const data = (result.data || []) as VendorData[];
-            
-            // 정렬 로직 적용
-            return {
-              ...result,
-              data: data.sort((a, b) => {
-                // 1순위: store_id
+            if (result.data) {
+              // 매입을 먼저, 나머지는 order로 정렬
+              const sortedData = result.data.sort((a, b) => {
                 if (a.store_id !== b.store_id) {
                   return a.store_id - b.store_id;
                 }
-                
-                // 2순위: 매입 카테고리 우선
-                if (a.category !== b.category) {
-                  if (a.category === '매입') return -1;
-                  if (b.category === '매입') return 1;
-                }
-                
-                // 3순위: order 오름차순
+                if (a.category === '매입' && b.category !== '매입') return -1;
+                if (a.category !== '매입' && b.category === '매입') return 1;
                 return a.order - b.order;
-              })
-            };
+              });
+              return { ...result, data: sortedData };
+            }
+            return result;
           });
 
         if (vendorsError) throw vendorsError;
@@ -132,15 +125,17 @@ export default function VendorsPage() {
           <table className="data-table">
             <thead>
               <tr>
-                {Object.entries(columnMapping).map(([key, label]) => (
-                  <th key={key}>{label}</th>
+                {(Object.entries(columnMapping) as [keyof typeof columnMapping, string][]).map(([key, label]) => (
+                  <th key={key}>
+                    {label}
+                  </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {vendors.map((vendor) => (
-                <tr key={vendor.id}>
-                  {Object.keys(columnMapping).map((key) => (
+              {vendors.map((vendor, index) => (
+                <tr key={index}>
+                  {(Object.keys(columnMapping) as (keyof typeof columnMapping)[]).map((key) => (
                     <td key={key} className={columnStyles[key]}>
                       {key === 'store_id' ? getStoreName(vendor.store_id) : vendor[key as keyof VendorData] || '-'}
                     </td>

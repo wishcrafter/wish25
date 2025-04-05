@@ -9,7 +9,7 @@ export default function TestPage() {
   useEffect(() => {
     async function fetchStores() {
       const { data, error } = await supabase
-        .from('stores')
+        .from('vendors')
         .select('*');
 
       if (error) {

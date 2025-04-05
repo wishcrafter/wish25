@@ -38,12 +38,7 @@ export default function Sidebar() {
           </li>
           {menuItems.map((group, groupIndex) => (
             <li key={groupIndex}>
-              <div style={{ 
-                color: '#666',
-                fontSize: '0.8em',
-                padding: '10px 10px 5px 10px',
-                marginTop: groupIndex > 0 ? '15px' : '0'
-              }}>
+              <div className="nav-group">
                 {group.group}
               </div>
               <ul style={{ paddingLeft: '10px' }}>

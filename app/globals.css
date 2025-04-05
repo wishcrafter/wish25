@@ -156,6 +156,13 @@ body {
   color: #64748b;
 }
 
+/* 계좌번호 컬럼 */
+.data-table .col-account,
+.data-table td.col-account {
+  text-align: left;
+  color: #334155;
+}
+
 /* 숫자 데이터 컬럼 */
 .data-table .col-number {
   text-align: right;
@@ -217,15 +224,34 @@ body {
 
 /* 버튼 스타일 */
 .btn {
-  @apply px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
 }
 
 .btn-primary {
-  @apply bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 shadow-sm hover:shadow;
+  background: #2563eb;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #1d4ed8;
 }
 
 .btn-secondary {
-  @apply bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 shadow-sm;
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.btn-secondary:hover {
+  background: #e2e8f0;
 }
 
 /* 입력 필드 스타일 */
@@ -348,6 +374,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  position: relative;
+  min-height: 100px;
 }
 
 .amount-row {
@@ -376,8 +404,8 @@ body {
 }
 
 .amount-row.transactions {
-  margin-top: 4px;
-  padding-top: 6px;
+  margin-top: auto;
+  padding-top: 8px;
   border-top: 1px dashed #e2e8f0;
 }
 
@@ -388,18 +416,22 @@ body {
   background: white;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
 }
 
 .store-toggle-all {
-  margin-bottom: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+  padding-right: 16px;
+  border-right: 1px solid #e2e8f0;
 }
 
 .store-toggles {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 12px;
+  flex: 1;
 }
 
 /* 체크박스 스타일 */
@@ -410,6 +442,8 @@ body {
   padding-left: 28px;
   cursor: pointer;
   user-select: none;
+  white-space: nowrap;
+  min-width: 100px;
 }
 
 .checkbox-wrapper input {
@@ -506,4 +540,143 @@ body {
   outline: none;
   border-color: #2563eb;
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.store-toggle-all .label-text {
+  font-weight: 600;
+  color: #334155;
+}
+
+.store-toggles .label-text {
+  font-weight: normal;
+  color: #475569;
+}
+
+/* 페이지 헤더 스타일 */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.page-header .page-title {
+  margin-bottom: 0;
+}
+
+/* 모달 스타일 */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-sizing: border-box;
+}
+
+.modal-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1e40af;
+  margin: 0;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.modal-close:hover {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.modal-body {
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* 폼 그룹 스타일 */
+.form-group {
+  margin-bottom: 16px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #334155;
+  margin-bottom: 6px;
+}
+
+.form-group select,
+.form-group input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: #334155;
+  background: white;
+  transition: all 0.2s;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.form-group select:hover,
+.form-group input:hover {
+  border-color: #2563eb;
+}
+
+.form-group select:focus,
+.form-group input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.form-group input[type="date"] {
+  font-family: inherit;
 } 
