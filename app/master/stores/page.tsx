@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/utils/supabase';
+import PageLayout from '@/components/PageLayout';
+import DataTable from '@/components/DataTable';
 
 interface StoreData {
   store_id: number;
@@ -32,9 +34,22 @@ const columnStyles: { [key: string]: string } = {
   extra_info: ''
 };
 
+// 빈 데이터 샘플
+const emptyStoreData: StoreData[] = [
+  {
+    store_id: 0,
+    store_name: '',
+    business_number: '',
+    bank_account: '',
+    opening_date: '',
+    address: '',
+    extra_info: ''
+  }
+];
+
 export default function StoresPage() {
   const [stores, setStores] = useState<StoreData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -50,10 +65,13 @@ export default function StoresPage() {
           throw error;
         }
 
-        setStores(data || []);
+        // 데이터가 있으면 설정하고, 없으면 빈 배열 대신 빈 데이터 샘플 사용
+        setStores(data && data.length > 0 ? data : emptyStoreData);
       } catch (err: any) {
         console.error('Error fetching stores:', err);
         setError(err.message);
+        // 에러 발생시에도 빈 화면이 아닌 샘플 데이터 표시
+        setStores(emptyStoreData);
       } finally {
         setLoading(false);
       }
@@ -62,63 +80,25 @@ export default function StoresPage() {
     fetchStores();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="page-container">
-        <h1 className="page-title">점포 정보</h1>
-        <div className="loading-state">
-          데이터를 불러오는 중...
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="page-container">
-        <h1 className="page-title">점포 정보</h1>
-        <div className="error-state">
-          에러: {error}
-        </div>
-      </div>
-    );
-  }
+  // 날짜 포맷터
+  const formatters = {
+    opening_date: (value: string) => 
+      value ? new Date(value).toLocaleDateString('ko-KR') : '-'
+  };
 
   return (
-    <div className="page-container">
-      <h1 className="page-title">점포 정보</h1>
-      {stores.length > 0 ? (
-        <div className="data-table-container">
-          <table className="data-table">
-            <thead>
-              <tr>
-                {(Object.entries(columnMapping) as [keyof typeof columnMapping, string][]).map(([key, label]) => (
-                  <th key={key}>
-                    {label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {stores.map((store, index) => (
-                <tr key={index}>
-                  {(Object.keys(columnMapping) as (keyof typeof columnMapping)[]).map((key) => (
-                    <td key={key} className={columnStyles[key]}>
-                      {key === 'opening_date' && store[key as keyof StoreData]
-                        ? new Date(store[key as keyof StoreData] as string).toLocaleDateString('ko-KR')
-                        : store[key as keyof StoreData] || '-'}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <div className="empty-state">
-          등록된 점포가 없습니다.
-        </div>
-      )}
-    </div>
+    <PageLayout 
+      title="점포 정보"
+      isLoading={false}
+      error={error}
+    >
+      <DataTable 
+        data={stores}
+        columnMapping={columnMapping}
+        columnStyles={columnStyles}
+        formatters={formatters}
+        emptyMessage=""
+      />
+    </PageLayout>
   );
 } 

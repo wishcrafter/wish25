@@ -1,12 +1,25 @@
 {
-  "app\\management\\purchases\\components\\ClientWrapper.tsx -> ./PurchasesContent": {
-    "id": "app\\management\\purchases\\components\\ClientWrapper.tsx -> ./PurchasesContent",
+  "app\\dashboard\\page.tsx -> ./components/DashboardContent": {
+    "id": "app\\dashboard\\page.tsx -> ./components/DashboardContent",
+    "files": [
+      "static/css/_app-pages-browser_app_dashboard_components_DashboardContent_tsx.css",
+      "static/chunks/_app-pages-browser_app_dashboard_components_DashboardContent_tsx.js"
+    ]
+  },
+  "app\\management\\expenses\\page.tsx -> ./components/ExpensesContent": {
+    "id": "app\\management\\expenses\\page.tsx -> ./components/ExpensesContent",
+    "files": [
+      "static/chunks/_app-pages-browser_app_management_expenses_components_ExpensesContent_tsx.js"
+    ]
+  },
+  "app\\management\\purchases\\page.tsx -> ./components/PurchasesContent": {
+    "id": "app\\management\\purchases\\page.tsx -> ./components/PurchasesContent",
     "files": [
       "static/chunks/_app-pages-browser_app_management_purchases_components_PurchasesContent_tsx.js"
     ]
   },
-  "app\\management\\sales\\components\\ClientWrapper.tsx -> ./SalesContent": {
-    "id": "app\\management\\sales\\components\\ClientWrapper.tsx -> ./SalesContent",
+  "app\\management\\sales\\page.tsx -> ./components/SalesContent": {
+    "id": "app\\management\\sales\\page.tsx -> ./components/SalesContent",
     "files": [
       "static/chunks/_app-pages-browser_app_management_sales_components_SalesContent_tsx.js"
     ]

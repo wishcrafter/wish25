@@ -6,18 +6,21 @@ export default function Sidebar() {
     { 
       group: '관리',
       items: [
-        { href: '/management/sales', label: '매출관리' },
-        { href: '/management/purchases', label: '매입관리' },
-        { href: '/management/expenses', label: '비용관리' },
-        { href: '/management/others', label: '기타관리' },
+        { href: '/management/sales', label: '매출 관리' },
+        { href: '/management/purchases', label: '매입 관리' },
+        { href: '/management/expenses', label: '비용 관리' },
+        { href: '/management/others', label: '기타 거래 관리' },
+        { href: '/management/wstudio', label: '스튜디오 매출 관리' },
+        { href: '/management/w_customer', label: '스튜디오 고객 관리' },
       ]
     },
     // 정보 메뉴
     {
       group: '정보',
       items: [
-        { href: '/master/stores', label: '점포정보' },
-        { href: '/master/vendors', label: '거래처정보' },
+        { href: '/master/stores', label: '점포 정보' },
+        { href: '/master/vendors', label: '거래처 정보' },
+        { href: '/master/w_rooms', label: '스튜디오 방 정보' },
       ]
     },
     // 개발 메뉴
@@ -35,6 +38,9 @@ export default function Sidebar() {
         <ul>
           <li>
             <a href="/" className="nav-link">홈</a>
+          </li>
+          <li>
+            <a href="/dashboard" className="nav-link">대시보드</a>
           </li>
           {menuItems.map((group, groupIndex) => (
             <li key={groupIndex}>

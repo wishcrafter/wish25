@@ -1,3 +1,4 @@
+import 'rc-slider/assets/index.css';
 import './globals.css';
 import React from 'react';
 import Sidebar from './components/Sidebar';

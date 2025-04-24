@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '../../utils/supabase';
+import { supabase } from '@/utils/supabase';
+import PageLayout from '@/components/PageLayout';
 
 // stores 테이블의 데이터 타입 정의
 interface StoreData {
@@ -34,6 +35,11 @@ export default function StoresPage() {
   useEffect(() => {
     async function fetchStoresData() {
       try {
+        // 이미 데이터가 있는 경우 로딩 표시 안함
+        if (storesData.length === 0) {
+          setLoading(true);
+        }
+        
         const { data, error } = await supabase
           .from('stores')
           .select('*');
@@ -54,23 +60,17 @@ export default function StoresPage() {
     fetchStoresData();
   }, []);
 
-  if (loading) {
-    return <div className="main">
-      <div className="message message-info">데이터를 불러오는 중...</div>
-    </div>;
-  }
-
-  if (error) {
-    return <div className="main">
-      <div className="message message-error">에러 발생: {error}</div>
-    </div>;
-  }
-
   return (
-    <div className="main">
-      <div className="page-header">
-        <h1>점포 관리</h1>
-      </div>
+    <PageLayout
+      title="점포 관리"
+      isLoading={loading && storesData.length === 0}
+      error={error}
+    >
+      {loading && storesData.length > 0 && (
+        <div className="minimal-loading-indicator">
+          <div className="loading-spinner-small"></div>
+        </div>
+      )}
 
       <div className="data-table">
         {storesData.length > 0 ? (
@@ -101,6 +101,6 @@ export default function StoresPage() {
           <div className="message message-info">등록된 점포가 없습니다.</div>
         )}
       </div>
-    </div>
+    </PageLayout>
   );
 } 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/utils/supabase';
+import PageLayout from '@/components/PageLayout';
 
 interface VendorData {
   id: number;
@@ -27,17 +28,30 @@ const columnMapping: { [key: string]: string } = {
 };
 
 const columnStyles: { [key: string]: string } = {
-  store_id: 'col-name',
-  category: 'col-date',
-  vendor_name: 'col-name',
-  bank_account: 'col-account',
-  business_number: 'col-business-num'
+  store_id: 'col-name text-center',
+  category: 'col-date text-center',
+  vendor_name: 'col-name text-center',
+  bank_account: 'col-account text-center',
+  business_number: 'col-business-num text-center'
 };
+
+// 빈 데이터 샘플
+const emptyVendorData: VendorData[] = [
+  {
+    id: 0,
+    store_id: 0,
+    category: '',
+    order: 0,
+    vendor_name: '',
+    bank_account: '',
+    business_number: ''
+  }
+];
 
 export default function VendorsPage() {
   const [vendors, setVendors] = useState<VendorData[]>([]);
   const [stores, setStores] = useState<StoreData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -45,41 +59,36 @@ export default function VendorsPage() {
       try {
         setLoading(true);
         
-        // 점포 데이터 먼저 가져오기
-        const { data: storesData, error: storesError } = await supabase
-          .from('stores')
-          .select('store_id, store_name');
+        // 점포 데이터와 거래처 데이터를 병렬로 가져오기
+        const [storesResult, vendorsResult] = await Promise.all([
+          supabase.from('stores').select('store_id, store_name'),
+          supabase.from('vendors').select('*')
+        ]);
 
-        if (storesError) throw storesError;
-        setStores(storesData || []);
-
-        // 거래처 데이터 가져오기
-        const { data: vendorsData, error: vendorsError } = await supabase
-          .from('vendors')
-          .select('*')
-          .order('store_id')
-          .then(result => {
-            if (result.data) {
-              // 매입을 먼저, 나머지는 order로 정렬
-              const sortedData = result.data.sort((a, b) => {
-                if (a.store_id !== b.store_id) {
-                  return a.store_id - b.store_id;
-                }
-                if (a.category === '매입' && b.category !== '매입') return -1;
-                if (a.category !== '매입' && b.category === '매입') return 1;
-                return a.order - b.order;
-              });
-              return { ...result, data: sortedData };
-            }
-            return result;
-          });
-
-        if (vendorsError) throw vendorsError;
-        setVendors(vendorsData || []);
-
+        // 에러 처리
+        if (storesResult.error) throw storesResult.error;
+        if (vendorsResult.error) throw vendorsResult.error;
+        
+        // 데이터 설정
+        setStores(storesResult.data || []);
+        
+        // 매입을 먼저, 나머지는 order로 정렬
+        const sortedVendors = vendorsResult.data ? vendorsResult.data.sort((a, b) => {
+          if (a.store_id !== b.store_id) {
+            return a.store_id - b.store_id;
+          }
+          if (a.category === '매입' && b.category !== '매입') return -1;
+          if (a.category !== '매입' && b.category === '매입') return 1;
+          return a.order - b.order;
+        }) : [];
+        
+        // 데이터가 있으면 설정, 없으면 빈 데이터 샘플 사용
+        setVendors(sortedVendors.length > 0 ? sortedVendors : emptyVendorData);
       } catch (err: any) {
         console.error('Error fetching data:', err);
         setError(err.message);
+        // 에러 발생시에도 빈 화면이 아닌 샘플 데이터 표시
+        setVendors(emptyVendorData);
       } finally {
         setLoading(false);
       }
@@ -94,62 +103,44 @@ export default function VendorsPage() {
     return store ? store.store_name : '-';
   };
 
-  if (loading) {
-    return (
-      <div className="page-container">
-        <h1 className="page-title">거래처 정보</h1>
-        <div className="loading-state">
-          데이터를 불러오는 중...
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="page-container">
-        <h1 className="page-title">거래처 정보</h1>
-        <div className="error-state">
-          에러: {error}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="page-container">
-      <h1 className="page-title">거래처 정보</h1>
-      
-      {vendors.length > 0 ? (
-        <div className="data-table-container">
-          <table className="data-table">
-            <thead>
-              <tr>
-                {(Object.entries(columnMapping) as [keyof typeof columnMapping, string][]).map(([key, label]) => (
-                  <th key={key}>
-                    {label}
-                  </th>
+    <PageLayout
+      title="거래처 정보"
+      isLoading={false}
+      error={error}
+    >
+      <div className="data-table-container" style={{ maxHeight: 'none', overflow: 'visible' }}>
+        <table className="data-table">
+          <thead>
+            <tr>
+              {(Object.entries(columnMapping) as [keyof typeof columnMapping, string][]).map(([key, label]) => (
+                <th key={key}>
+                  {label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {vendors.map((vendor, index) => (
+              <tr key={index}>
+                {(Object.keys(columnMapping) as (keyof typeof columnMapping)[]).map((key) => (
+                  <td key={key} className={columnStyles[key]}>
+                    {key === 'store_id' ? getStoreName(vendor.store_id) : vendor[key as keyof VendorData] || '-'}
+                  </td>
                 ))}
               </tr>
-            </thead>
-            <tbody>
-              {vendors.map((vendor, index) => (
-                <tr key={index}>
-                  {(Object.keys(columnMapping) as (keyof typeof columnMapping)[]).map((key) => (
-                    <td key={key} className={columnStyles[key]}>
-                      {key === 'store_id' ? getStoreName(vendor.store_id) : vendor[key as keyof VendorData] || '-'}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <div className="empty-state">
-          등록된 거래처가 없습니다.
-        </div>
-      )}
-    </div>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <style jsx>{`
+        .data-table-container {
+          max-height: none !important;
+          overflow: visible !important;
+          overflow-y: visible !important;
+        }
+      `}</style>
+    </PageLayout>
   );
 }

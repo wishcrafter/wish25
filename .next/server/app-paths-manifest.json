@@ -1,6 +1,3 @@
 {
-  "/management/purchases/page": "app/management/purchases/page.js",
-  "/management/sales/page": "app/management/sales/page.js",
-  "/management/expenses/page": "app/management/expenses/page.js",
-  "/management/others/page": "app/management/others/page.js"
+  "/page": "app/page.js"
 }
