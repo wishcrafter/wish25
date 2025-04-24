@@ -1,55 +1,80 @@
 {
   "app\\dashboard\\page.tsx -> ./components/DashboardContent": {
-    "id": "app\\dashboard\\page.tsx -> ./components/DashboardContent",
+    "id": 2005,
     "files": [
-      "static/css/_app-pages-browser_app_dashboard_components_DashboardContent_tsx.css",
-      "static/chunks/_app-pages-browser_app_dashboard_components_DashboardContent_tsx.js"
+      "static/css/8503b403a0d43678.css",
+      "static/chunks/851-c6952f3282869f27.js",
+      "static/chunks/368.dccf95caddbe8dae.js",
+      "static/chunks/5.34915b104d14cf9c.js"
     ]
   },
   "app\\management\\expenses\\page.tsx -> ./components/ExpensesContent": {
-    "id": "app\\management\\expenses\\page.tsx -> ./components/ExpensesContent",
+    "id": 9377,
     "files": [
-      "static/chunks/_app-pages-browser_app_management_expenses_components_ExpensesContent_tsx.js"
+      "static/chunks/851-c6952f3282869f27.js",
+      "static/chunks/377.4e54a133ffdc9ed3.js"
+    ]
+  },
+  "app\\management\\others\\page.tsx -> ./components/OthersContent": {
+    "id": 2641,
+    "files": [
+      "static/chunks/851-c6952f3282869f27.js",
+      "static/chunks/641.ccbe9b3703af7ba8.js"
     ]
   },
   "app\\management\\purchases\\page.tsx -> ./components/PurchasesContent": {
-    "id": "app\\management\\purchases\\page.tsx -> ./components/PurchasesContent",
+    "id": 9701,
     "files": [
-      "static/chunks/_app-pages-browser_app_management_purchases_components_PurchasesContent_tsx.js"
+      "static/chunks/851-c6952f3282869f27.js",
+      "static/chunks/82.b1cdae5393de59fa.js"
     ]
   },
   "app\\management\\sales\\page.tsx -> ./components/SalesContent": {
-    "id": "app\\management\\sales\\page.tsx -> ./components/SalesContent",
+    "id": 4701,
     "files": [
-      "static/chunks/_app-pages-browser_app_management_sales_components_SalesContent_tsx.js"
+      "static/chunks/851-c6952f3282869f27.js",
+      "static/chunks/701.777481d0c6eeab6f.js"
+    ]
+  },
+  "app\\management\\wstudio\\page.tsx -> ./components/WStudioContent": {
+    "id": 7347,
+    "files": [
+      "static/chunks/851-c6952f3282869f27.js",
+      "static/chunks/347.038ca9ca6a7744db.js"
     ]
   },
   "node_modules\\@supabase\\auth-js\\dist\\module\\lib\\helpers.js -> @supabase/node-fetch": {
-    "id": "node_modules\\@supabase\\auth-js\\dist\\module\\lib\\helpers.js -> @supabase/node-fetch",
+    "id": 2410,
     "files": []
   },
   "node_modules\\@supabase\\functions-js\\dist\\module\\helper.js -> @supabase/node-fetch": {
-    "id": "node_modules\\@supabase\\functions-js\\dist\\module\\helper.js -> @supabase/node-fetch",
+    "id": 2410,
     "files": []
   },
   "node_modules\\@supabase\\realtime-js\\dist\\module\\RealtimeClient.js -> @supabase/node-fetch": {
-    "id": "node_modules\\@supabase\\realtime-js\\dist\\module\\RealtimeClient.js -> @supabase/node-fetch",
+    "id": 2410,
     "files": []
   },
   "node_modules\\@supabase\\realtime-js\\dist\\module\\RealtimeClient.js -> ws": {
-    "id": "node_modules\\@supabase\\realtime-js\\dist\\module\\RealtimeClient.js -> ws",
+    "id": 294,
     "files": [
-      "static/chunks/_app-pages-browser_node_modules_ws_browser_js.js"
+      "static/chunks/294.e72d2554be082393.js"
     ]
   },
   "node_modules\\@supabase\\storage-js\\dist\\module\\lib\\helpers.js -> @supabase/node-fetch": {
-    "id": "node_modules\\@supabase\\storage-js\\dist\\module\\lib\\helpers.js -> @supabase/node-fetch",
+    "id": 2410,
     "files": []
   },
-  "node_modules\\next\\dist\\client\\components\\react-dev-overlay\\utils\\use-websocket.js -> @vercel/turbopack-ecmascript-runtime/browser/dev/hmr-client/hmr-client.ts": {
-    "id": "node_modules\\next\\dist\\client\\components\\react-dev-overlay\\utils\\use-websocket.js -> @vercel/turbopack-ecmascript-runtime/browser/dev/hmr-client/hmr-client.ts",
+  "node_modules\\next\\dist\\client\\index.js -> ../pages/_app": {
+    "id": 472,
     "files": [
-      "static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js"
+      "static/chunks/472.a3826d29d6854395.js"
+    ]
+  },
+  "node_modules\\next\\dist\\client\\index.js -> ../pages/_error": {
+    "id": 9341,
+    "files": [
+      "static/chunks/341.2903e54d3da731c1.js"
     ]
   }
 }

@@ -13,7 +13,7 @@ const WStudioContent = dynamic(() => import('./components/WStudioContent'), {
 export default function WStudioPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hasChanges, setHasChanges] = useState(false);
+  const [hasChanges, setHasChanges] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   
   // 저장 함수 레퍼런스 저장
