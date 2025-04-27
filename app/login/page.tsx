@@ -9,15 +9,29 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === process.env.NEXT_PUBLIC_PASSWORD) {
-      sessionStorage.setItem('isLoggedIn', 'true');
-      Cookies.set('isLoggedIn', 'true', { expires: 1 });
-      router.push('/');
-    } else {
-      setError('비밀번호가 올바르지 않습니다.');
-      setPassword('');
+    
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password }),
+      });
+      
+      if (response.ok) {
+        sessionStorage.setItem('isLoggedIn', 'true');
+        Cookies.set('isLoggedIn', 'true', { expires: 1 });
+        router.push('/');
+      } else {
+        setError('비밀번호가 올바르지 않습니다.');
+        setPassword('');
+      }
+    } catch (error) {
+      setError('로그인 중 오류가 발생했습니다.');
+      console.error('Login error:', error);
     }
   };
 
