@@ -35,6 +35,7 @@ const createDummyQuery = () => {
     like: () => dummyQuery,
     not: () => dummyQuery,
     in: () => dummyQuery,
+    or: () => dummyQuery,
     order: () => dummyQuery,
     limit: () => dummyQuery,
     range: () => dummyQuery,
