@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseServer } from '../../../utils/supabase-server';
+import { supabase } from '../../../utils/supabase-server';
 
 export async function POST(request: Request) {
   try {
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     
     // 읽기 작업
     if (action === 'select') {
-      const { data: result, error } = await supabaseServer
+      const { data: result, error } = await supabase
         .from(table)
         .select(data.select || '*')
         .order(data.orderBy || 'id', { ascending: data.ascending !== false });
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     
     // 쓰기 작업 (insert)
     if (action === 'insert') {
-      const { data: result, error } = await supabaseServer
+      const { data: result, error } = await supabase
         .from(table)
         .insert(data.values)
         .select();
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     
     // 수정 작업 (update)
     if (action === 'update') {
-      const { data: result, error } = await supabaseServer
+      const { data: result, error } = await supabase
         .from(table)
         .update(data.values)
         .match(data.match)
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     
     // 삭제 작업 (delete)
     if (action === 'delete') {
-      const { data: result, error } = await supabaseServer
+      const { data: result, error } = await supabase
         .from(table)
         .delete()
         .match(data.match);
@@ -63,10 +63,10 @@ export async function POST(request: Request) {
       { success: false, message: '지원되지 않는 작업입니다.' },
       { status: 400 }
     );
-  } catch (error) {
-    console.error('Supabase API error:', error);
+  } catch (error: any) {
+    console.error('API 오류:', error.message);
     return NextResponse.json(
-      { success: false, message: '서버 오류가 발생했습니다.' },
+      { success: false, message: error.message },
       { status: 500 }
     );
   }
