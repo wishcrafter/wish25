@@ -69,7 +69,7 @@ export default function Sidebar() {
           <li className="mt-auto">
             <button 
               onClick={handleLogout} 
-              className="nav-link w-full text-left text-red-200 hover:text-red-100"
+              className="logout-btn w-full text-left"
             >
               로그아웃
             </button>

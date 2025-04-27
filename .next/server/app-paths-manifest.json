@@ -1,14 +1,8 @@
 {
   "/api/supabase/route": "app/api/supabase/route.js",
-  "/page": "app/page.js",
-  "/management/sales/page": "app/management/sales/page.js",
-  "/dashboard/page": "app/dashboard/page.js",
-  "/management/purchases/page": "app/management/purchases/page.js",
-  "/management/expenses/page": "app/management/expenses/page.js",
+  "/management/w_customer/page": "app/management/w_customer/page.js",
   "/management/others/page": "app/management/others/page.js",
   "/management/wstudio/page": "app/management/wstudio/page.js",
-  "/management/w_customer/page": "app/management/w_customer/page.js",
-  "/master/stores/page": "app/master/stores/page.js",
-  "/master/vendors/page": "app/master/vendors/page.js",
-  "/master/w_rooms/page": "app/master/w_rooms/page.js"
+  "/master/w_rooms/page": "app/master/w_rooms/page.js",
+  "/management/purchases/page": "app/management/purchases/page.js"
 }

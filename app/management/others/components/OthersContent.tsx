@@ -189,6 +189,7 @@ export default function OthersContent({
       // 두 개의 개별 쿼리를 병렬로 실행
       const [othersResponse, storesResponse] = await Promise.all([
         fetchData('others', {
+          select: 'id, store_id, date, amount, details',
           orderBy: 'date',
           ascending: false
         }),
@@ -212,8 +213,9 @@ export default function OthersContent({
         storeMap.set(store.store_id, store.store_name);
       });
 
+      console.log('[OTHERS] othersResponse', othersResponse);
       // 데이터 형식 변환 - 기존 데이터와 새 데이터 병합하여 불필요한 리렌더링 방지
-      const formattedData: OtherData[] = (othersResponse.data || []).map((item: any) => ({
+      const formattedData: OtherData[] = ((othersResponse.data || othersResponse || []) as any[]).map((item: any) => ({
         id: item.id,
         store_id: item.store_id,
         date: item.date,
@@ -256,17 +258,22 @@ export default function OthersContent({
     }
   };
 
+  // useEffect: 점포 먼저, 그 다음 기타 거래
   useEffect(() => {
-    // 기타 데이터와 점포 목록을 함께 가져옴
-    fetchOthers();
+    fetchStores();
   }, []);
+
+  useEffect(() => {
+    if (availableStores.length > 0) {
+      fetchOthers();
+    }
+  }, [availableStores]);
 
   // 필터링된 데이터 계산 (기타현황용)
   const filteredOthersByDate = others.filter(other => {
     const otherDate = new Date(other.date);
     const otherYear = otherDate.getFullYear().toString();
     const otherMonth = (otherDate.getMonth() + 1).toString().padStart(2, '0');
-    
     return (
       otherYear === selectedYear &&
       otherMonth === selectedMonth
@@ -278,11 +285,12 @@ export default function OthersContent({
     const otherDate = new Date(other.date);
     const otherYear = otherDate.getFullYear().toString();
     const otherMonth = (otherDate.getMonth() + 1).toString().padStart(2, '0');
-    
+    // store_id 기준으로 availableStores에서 store_name을 찾아 selectedStores에 포함되는지 확인
+    const store = availableStores.find(s => s.store_id === other.store_id);
     return (
       otherYear === selectedYear &&
       otherMonth === selectedMonth &&
-      selectedStores.has(other.store_name)
+      store && selectedStores.has(store.store_name)
     );
   });
 
@@ -350,10 +358,9 @@ export default function OthersContent({
 
   // 점포별 총 금액 계산
   const calculateStoreTotals = (store: {store_id: number; store_name: string}) => {
-    const storeData = filteredOthersByDate.filter(p => p.store_name === store.store_name);
+    const storeData = filteredOthersByDate.filter(p => p.store_id === store.store_id);
     const total = storeData.reduce((sum, item) => sum + item.amount, 0);
     const count = storeData.length;
-    
     return { total, count };
   };
 
@@ -581,41 +588,11 @@ export default function OthersContent({
 
       <div className="store-summary">
         <h2 className="summary-title">점포별 기타거래 현황</h2>
-        
-        {/* 냠냠 그룹 */}
+        {/* 모든 점포에 대해 카드 생성 (거래가 없어도 카드가 보이도록) */}
         <div className="summary-grid">
           {availableStores
-            .filter(store => [1001, 1003, 1004, 1005, 1100].includes(store.store_id))
             .map(store => {
               const { total, count } = calculateStoreTotals(store);
-              
-              return (
-                <div key={store.store_id} className="store-total-card small-card">
-                  <div className="store-name">{store.store_name}</div>
-                  <div className="store-details">
-                    <div className="amount-row">
-                      <span className="amount-label">총 거래금액</span>
-                      <span className="amount-value">{formatAmount(total)}원</span>
-                    </div>
-                    <div className="amount-row transactions">
-                      <span className="amount-label">거래건수</span>
-                      <span className="amount-value">
-                        {count}건
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-        </div>
-        
-        {/* 기타 점포 */}
-        <div className="summary-grid" style={{ marginTop: '12px' }}>
-          {availableStores
-            .filter(store => ![1001, 1003, 1004, 1005, 1100].includes(store.store_id))
-            .map(store => {
-              const { total, count } = calculateStoreTotals(store);
-              
               return (
                 <div key={store.store_id} className="store-total-card small-card">
                   <div className="store-name">{store.store_name}</div>

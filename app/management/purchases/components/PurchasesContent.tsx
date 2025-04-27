@@ -42,6 +42,7 @@ interface VendorData {
   store_id: number;
   order: number;
   bank_account: string | null;
+  category: string;
 }
 
 const columnMapping = {
@@ -140,7 +141,7 @@ export default function PurchasesContent({
         }),
           
         fetchData('vendors', {
-          select: 'id, vendor_name, store_id, order, bank_account',
+          select: 'id, vendor_name, store_id, order, bank_account, category',
           filters: {
             eq: { 'category': '매입' }
           },
@@ -412,7 +413,7 @@ export default function PurchasesContent({
   
   // 점포별 거래처 목록 가져오기
   const getStoreVendors = (store: {store_id: number; store_name: string}) => {
-    return vendors.filter(v => v.store_id === store.store_id);
+    return vendors.filter(v => v.store_id === store.store_id && v.category === '매입');
   };
 
   // 새 항목 추가 폼 제출 처리
