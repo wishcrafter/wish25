@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/utils/supabase';
+import { fetchData } from '../../../utils/supabase-client-api';
 import PageLayout from '@/components/PageLayout';
 import DataTable from '@/components/DataTable';
 
@@ -56,17 +56,19 @@ export default function StoresPage() {
     async function fetchStores() {
       try {
         setLoading(true);
-        const { data, error } = await supabase
-          .from('stores')
-          .select('*')
-          .order('store_id', { ascending: true });
+        
+        // 서버 API를 통해 점포 데이터 조회
+        const response = await fetchData('stores', {
+          orderBy: 'store_id',
+          ascending: true
+        });
 
-        if (error) {
-          throw error;
+        if (!response.success) {
+          throw new Error('점포 데이터 조회 실패');
         }
 
         // 데이터가 있으면 설정하고, 없으면 빈 배열 대신 빈 데이터 샘플 사용
-        setStores(data && data.length > 0 ? data : emptyStoreData);
+        setStores(response.data && response.data.length > 0 ? response.data : emptyStoreData);
       } catch (err: any) {
         console.error('Error fetching stores:', err);
         setError(err.message);

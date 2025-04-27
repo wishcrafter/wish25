@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     console.log('[API/supabase] 액션:', action);
     
     // 승인된 테이블만 접근 허용
-    const allowedTables = ['stores', 'vendors', 'w_customers', 'w_rooms'];
+    const allowedTables = ['stores', 'vendors', 'w_customers', 'w_rooms', 'sales', 'others', 'expenses'];
     if (!allowedTables.includes(table)) {
       console.warn(`[API/supabase] 승인되지 않은 테이블 접근 시도: ${table}`);
       return NextResponse.json(
@@ -26,10 +26,42 @@ export async function POST(request: Request) {
     if (action === 'select') {
       console.log(`[API/supabase] SELECT 쿼리 실행: ${table}`);
       
-      const { data: result, error } = await supabase
+      let query = supabase
         .from(table)
-        .select(data.select || '*')
-        .order(data.orderBy || 'id', { ascending: data.ascending !== false });
+        .select(data.select || '*');
+      
+      // 정렬 처리
+      if (data.orderBy) {
+        query = query.order(data.orderBy, { ascending: data.ascending !== false });
+      }
+      
+      // 추가 필터 적용
+      if (data.filters) {
+        // not 필터
+        if (data.filters.not) {
+          for (const [column, value] of Object.entries(data.filters.not)) {
+            query = query.not(column, 'eq', value);
+          }
+        }
+        
+        // in 필터
+        if (data.filters.in) {
+          for (const [column, values] of Object.entries(data.filters.in)) {
+            if (Array.isArray(values)) {
+              query = query.in(column, values as any[]);
+            }
+          }
+        }
+        
+        // neq 필터
+        if (data.filters.neq) {
+          for (const [column, value] of Object.entries(data.filters.neq)) {
+            query = query.neq(column, value);
+          }
+        }
+      }
+      
+      const { data: result, error } = await query;
       
       if (error) {
         console.error('[API/supabase] SELECT 쿼리 오류:', error);

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, Dispatch, SetStateAction } from 'react';
-import { supabase } from '@/utils/supabase';
+import { fetchData, insertData, updateData } from '../../../../utils/supabase-client-api';
 
 // 비용 데이터 인터페이스
 interface ExpenseData {
@@ -108,15 +108,21 @@ export default function ExpensesContent({
   // 점포 목록을 가져오는 함수
   const fetchStores = async () => {
     try {
-      const { data, error } = await supabase
-        .from('stores')
-        .select('store_id, store_name')
-        .in('store_id', [1001, 1003, 1004, 1005, 1100, 2001, 3001, 9001])
-        .order('store_id');
+      const response = await fetchData('stores', {
+        select: 'store_id, store_name',
+        filters: {
+          in: {
+            'store_id': [1001, 1003, 1004, 1005, 1100, 2001, 3001, 9001]
+          }
+        },
+        orderBy: 'store_id'
+      });
 
-      if (error) throw error;
+      if (!response.success) {
+        throw new Error('점포 데이터 조회 실패');
+      }
       
-      setStores(data || []);
+      setStores(response.data || []);
       return true;
     } catch (err: any) {
       setError(`점포 데이터 로딩 오류: ${err.message}`);
@@ -127,15 +133,21 @@ export default function ExpensesContent({
   // 거래처 목록을 가져오는 함수
   const fetchVendors = async () => {
     try {
-      const { data, error } = await supabase
-        .from('vendors')
-        .select('id, vendor_name, store_id, category, order')
-        .neq('category', '매입')
-        .order('store_id, order');
+      const response = await fetchData('vendors', {
+        select: 'id, vendor_name, store_id, category, order',
+        filters: {
+          neq: {
+            'category': '매입'
+          }
+        },
+        orderBy: 'store_id, order'
+      });
 
-      if (error) throw error;
+      if (!response.success) {
+        throw new Error('거래처 데이터 조회 실패');
+      }
       
-      setVendors(data || []);
+      setVendors(response.data || []);
       return true;
     } catch (err: any) {
       setError(`거래처 데이터 로딩 오류: ${err.message}`);
@@ -157,15 +169,22 @@ export default function ExpensesContent({
         prevYear = year - 1;
       }
       
-      const { data, error } = await supabase
-        .from('expenses')
-        .select('*')
-        .or(`and(year.eq.${year},month.eq.${month}),and(year.eq.${prevYear},month.eq.${prevMonth})`)
-        .order('store_id, vendor_id');
+      // API를 통해 비용 데이터 조회
+      const response = await fetchData('expenses', {
+        filters: {
+          or: [
+            { year: year, month: month },
+            { year: prevYear, month: prevMonth }
+          ]
+        },
+        orderBy: 'store_id, vendor_id'
+      });
 
-      if (error) throw error;
+      if (!response.success) {
+        throw new Error('비용 데이터 조회 실패');
+      }
       
-      setExpenses(data || []);
+      setExpenses(response.data || []);
       
       // 데이터 로드 후 편집 상태 초기화
       setEditedExpenses({});
@@ -183,51 +202,13 @@ export default function ExpensesContent({
       setLoading(true);
       
       try {
-        // Promise.all을 사용하여 모든 데이터를 병렬로 로딩
-        const [storesResult, vendorsResult, expensesResult] = await Promise.all([
-          // 매장 데이터
-          supabase
-            .from('stores')
-            .select('store_id, store_name')
-            .in('store_id', [1001, 1003, 1004, 1005, 1100, 2001, 3001, 9001])
-            .order('store_id'),
-          
-          // 거래처 데이터
-          supabase
-            .from('vendors')
-            .select('id, vendor_name, store_id, category, order')
-            .neq('category', '매입')
-            .order('store_id, order'),
-            
-          // 비용 데이터
-          supabase
-            .from('expenses')
-            .select('*')
-            .or(`and(year.eq.${parseInt(selectedYear)},month.eq.${parseInt(selectedMonth)}),and(year.eq.${parseInt(selectedYear) - (parseInt(selectedMonth) === 1 ? 1 : 0)},month.eq.${parseInt(selectedMonth) === 1 ? 12 : parseInt(selectedMonth) - 1})`)
-            .order('store_id, vendor_id')
-        ]);
-        
-        // 각 결과에 대한 에러 처리
-        if (storesResult.error) {
-          setStores(storesResult.data || []);
-        } else {
-          setStores(storesResult.data || []);
-        }
-        
-        if (vendorsResult.error) {
-          setVendors(vendorsResult.data || []);
-        } else {
-          setVendors(vendorsResult.data || []);
-        }
-        
-        if (expensesResult.error) {
-          setExpenses(expensesResult.data || []);
-        } else {
-          setExpenses(expensesResult.data || []);
-        }
+        // 필요한 데이터 로드
+        const storesSuccessful = await fetchStores();
+        const vendorsSuccessful = await fetchVendors();
+        const expensesSuccessful = await fetchExpenses();
         
         // 전체 에러 여부 판단
-        if (storesResult.error || vendorsResult.error || expensesResult.error) {
+        if (!storesSuccessful || !vendorsSuccessful || !expensesSuccessful) {
           const errorMessage = "데이터 로딩 중 일부 오류가 발생했습니다. 일부 데이터가 표시되지 않을 수 있습니다.";
           setError(errorMessage);
         } else {
@@ -348,10 +329,7 @@ export default function ExpensesContent({
 
   // 비용 업데이트 함수
   const updateExpense = async (expenseId: number, amount: number) => {
-    return supabase
-      .from('expenses')
-      .update({ amount })
-      .eq('id', expenseId);
+    return updateData('expenses', expenseId, { amount });
   };
 
   // 새 비용 생성 함수
@@ -359,15 +337,13 @@ export default function ExpensesContent({
     const year = parseInt(selectedYear);
     const month = parseInt(selectedMonth);
     
-    return supabase
-      .from('expenses')
-      .insert([{
-        year,
-        month,
-        store_id: storeId,
-        vendor_id: vendorId,
-        amount
-      }]);
+    return insertData('expenses', {
+      year,
+      month,
+      store_id: storeId,
+      vendor_id: vendorId,
+      amount
+    });
   };
 
   // 이전 달 비용을 현재 달로 복사하는 함수

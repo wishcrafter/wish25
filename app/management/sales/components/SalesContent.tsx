@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/utils/supabase';
+import { fetchData } from '../../../../utils/supabase-client-api';
 
 interface SalesData {
   sales_id: number;
@@ -82,42 +82,49 @@ export default function SalesContent() {
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      const [storesPromise, salesPromise] = [
-        supabase
-          .from('stores')
-          .select('store_id, store_name')
-          .not('store_name', 'eq', '위시크래프터')
-          .order('store_id'),
-        
-        supabase
-          .from('sales')
-          .select(`
-            store_id,
-            sales_date,
-            total_amount,
-            card_amount,
-            cash_amount,
-            etc_amount,
-            transaction_count,
-            updated_at,
-            stores (store_name)
-          `)
-          .order('sales_date', { ascending: false })
-      ];
+      // 서버 API를 통해 데이터 가져오기
+      const storesPromise = fetchData('stores', {
+        select: 'store_id, store_name',
+        filters: {
+          not: {
+            'store_name': '위시크래프터'
+          }
+        },
+        orderBy: 'store_id'
+      });
+      
+      const salesPromise = fetchData('sales', {
+        select: `
+          store_id,
+          sales_date,
+          total_amount,
+          card_amount,
+          cash_amount,
+          etc_amount,
+          transaction_count,
+          updated_at,
+          stores (store_name)
+        `,
+        orderBy: 'sales_date',
+        ascending: false
+      });
       
       // 두 요청을 병렬로 실행
-      const [storesResult, salesResult] = await Promise.all([storesPromise, salesPromise]);
+      const [storesResponse, salesResponse] = await Promise.all([storesPromise, salesPromise]);
       
       // 오류 처리
-      if (storesResult.error) throw storesResult.error;
-      if (salesResult.error) throw salesResult.error;
+      if (!storesResponse.success) throw new Error('점포 데이터 로딩 실패');
+      if (!salesResponse.success) throw new Error('매출 데이터 로딩 실패');
+      
+      const storesResult = storesResponse.data || [];
+      const salesResult = salesResponse.data || [];
       
       // 데이터 처리
-      const filteredStores = (storesResult.data || []).filter(store => store.store_id !== 1100 && store.store_id !== 2001);
+      const filteredStores = storesResult.filter((store: Store) => store.store_id !== 1100 && store.store_id !== 2001);
       setAvailableStores(filteredStores);
-      setSelectedStores(new Set(filteredStores.map(store => store.store_name)));
+      setSelectedStores(new Set(filteredStores.map((store: Store) => store.store_name)));
       
-      const formattedData: SalesData[] = (salesResult.data as unknown as RawSalesData[]).map(item => ({
+      const formattedData: SalesData[] = salesResult.map((item: RawSalesData) => ({
         sales_id: item.store_id,
         store_name: item.stores.store_name,
         sales_date: item.sales_date,
@@ -129,6 +136,7 @@ export default function SalesContent() {
       
       setSales(formattedData);
     } catch (err: any) {
+      console.error('데이터 로딩 오류:', err);
       setError(err.message);
     } finally {
       setLoading(false);
