@@ -7,13 +7,13 @@ const supabaseAnonKey = typeof window !== 'undefined' ? process.env.NEXT_PUBLIC_
 
 // 개발 환경에서 환경 변수가 없을 경우 경고
 if (typeof window !== 'undefined' && (!supabaseUrl || !supabaseAnonKey)) {
-  console.warn('NEXT_PUBLIC_SUPABASE_URL 또는 NEXT_PUBLIC_SUPABASE_ANON_KEY 환경 변수가 설정되지 않았습니다.');
+  console.warn('Supabase 환경 변수가 설정되지 않았습니다. 서버 API를 통해 데이터를 로드합니다.');
 }
 
 // 더미 메서드용 기본 응답
 const defaultErrorResponse = {
   data: null,
-  error: new Error('Supabase client not initialized')
+  error: new Error('클라이언트 초기화 실패, 서버 API를 통해 작업합니다')
 };
 
 // 더미 쿼리 객체 생성 (체이닝을 지원하는 모든 메서드 포함)
@@ -46,34 +46,40 @@ const createDummyQuery = () => {
 // 클라이언트 사이드에서만 Supabase 클라이언트 생성
 let supabaseClient: SupabaseClient;
 
-// 서버 사이드일 경우 더미 객체 제공
-if (typeof window === 'undefined') {
-  supabaseClient = {
+// 클라이언트 초기화 및 데이터 로드 함수
+const createSupabaseClientOrDummy = (): SupabaseClient => {
+  // 서버 사이드일 경우 더미 객체 제공
+  if (typeof window === 'undefined') {
+    return {
+      from: () => createDummyQuery(),
+      auth: {
+        signIn: () => Promise.resolve({ user: null, session: null, error: new Error('서버에서는 인증이 불가능합니다') }),
+        signOut: () => Promise.resolve({ error: null }),
+        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+      },
+      rpc: () => Promise.resolve(defaultErrorResponse),
+    } as unknown as SupabaseClient;
+  }
+  
+  // 클라이언트 사이드이면서 환경 변수가 있는 경우 실제 클라이언트 생성
+  if (supabaseUrl && supabaseAnonKey) {
+    return createClient(supabaseUrl, supabaseAnonKey);
+  }
+  
+  // 환경 변수가 없는 경우 더미 객체 제공
+  return {
     from: () => createDummyQuery(),
     auth: {
-      signIn: () => Promise.resolve({ user: null, session: null, error: new Error('Supabase client not initialized') }),
+      signIn: () => Promise.resolve({ user: null, session: null, error: new Error('환경 변수가 설정되지 않았습니다') }),
       signOut: () => Promise.resolve({ error: null }),
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
     },
     rpc: () => Promise.resolve(defaultErrorResponse),
   } as unknown as SupabaseClient;
-}
-// 클라이언트 사이드이면서 환경 변수가 있는 경우 실제 클라이언트 생성
-else if (supabaseUrl && supabaseAnonKey) {
-  supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
-}
-// 클라이언트 사이드이지만 환경 변수가 없는 경우 더미 객체 제공
-else {
-  supabaseClient = {
-    from: () => createDummyQuery(),
-    auth: {
-      signIn: () => Promise.resolve({ user: null, session: null, error: new Error('Supabase client not initialized') }),
-      signOut: () => Promise.resolve({ error: null }),
-      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-    },
-    rpc: () => Promise.resolve(defaultErrorResponse),
-  } as unknown as SupabaseClient;
-}
+};
 
-// 읽기 전용 작업만 허용하도록 권장
+// Supabase 클라이언트 초기화
+supabaseClient = createSupabaseClientOrDummy();
+
+// 클라이언트만 내보내기
 export { supabaseClient }; 

@@ -1,14 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
 
-// 서버 측에서만 사용할 Supabase 클라이언트
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
+// 주의: 이 파일은 서버 측에서만 가져와야 합니다!
+// 서버 측 환경 변수는 NEXT_PUBLIC_ 접두사를 사용하지 않습니다
+const supabaseUrl = process.env.SUPABASE_URL || '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || '';
 
 if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('Supabase URL과 Service Key가 환경변수에 설정되지 않았습니다.');
+  console.warn('[서버] SUPABASE_URL 또는 SUPABASE_SERVICE_KEY 환경 변수가 설정되지 않았습니다.');
 }
 
-export const supabaseServer = createClient(supabaseUrl, supabaseServiceKey, {
+// 서버 측에서만 사용하는 Supabase 클라이언트 생성
+export const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false
