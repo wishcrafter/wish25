@@ -169,6 +169,8 @@ export default function ExpensesContent({
         prevYear = year - 1;
       }
       
+      console.log(`[EXPENSES] 비용 데이터 로딩 시작: ${year}년 ${month}월 및 이전 달`);
+      
       // API를 통해 비용 데이터 조회
       const response = await fetchData('expenses', {
         filters: {
@@ -178,6 +180,11 @@ export default function ExpensesContent({
           ]
         },
         orderBy: 'store_id, vendor_id'
+      });
+
+      console.log(`[EXPENSES] 비용 데이터 응답:`, { 
+        success: response.success, 
+        count: response.data?.length || 0 
       });
 
       if (!response.success) {
@@ -191,6 +198,7 @@ export default function ExpensesContent({
       setInputValues({});
       return true;
     } catch (err: any) {
+      console.error(`[EXPENSES] 비용 데이터 로딩 오류:`, err);
       setError(`비용 데이터 로딩 오류: ${err.message}`);
       return false;
     }
@@ -329,7 +337,7 @@ export default function ExpensesContent({
 
   // 비용 업데이트 함수
   const updateExpense = async (expenseId: number, amount: number) => {
-    return updateData('expenses', expenseId, { amount });
+    return updateData('expenses', { id: expenseId }, { amount });
   };
 
   // 새 비용 생성 함수

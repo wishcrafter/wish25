@@ -1,4 +1,3 @@
 {
-  "/management/purchases/page": "app/management/purchases/page.js",
   "/dashboard/page": "app/dashboard/page.js"
 }

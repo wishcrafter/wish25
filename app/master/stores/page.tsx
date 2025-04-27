@@ -57,10 +57,17 @@ export default function StoresPage() {
       try {
         setLoading(true);
         
+        console.log('[STORES] 점포 데이터 로딩 시작');
+        
         // 서버 API를 통해 점포 데이터 조회
         const response = await fetchData('stores', {
           orderBy: 'store_id',
           ascending: true
+        });
+
+        console.log('[STORES] 점포 데이터 응답:', { 
+          success: response.success, 
+          count: response.data?.length || 0 
         });
 
         if (!response.success) {
@@ -70,7 +77,7 @@ export default function StoresPage() {
         // 데이터가 있으면 설정하고, 없으면 빈 배열 대신 빈 데이터 샘플 사용
         setStores(response.data && response.data.length > 0 ? response.data : emptyStoreData);
       } catch (err: any) {
-        console.error('Error fetching stores:', err);
+        console.error('[STORES] 점포 데이터 로딩 오류:', err);
         setError(err.message);
         // 에러 발생시에도 빈 화면이 아닌 샘플 데이터 표시
         setStores(emptyStoreData);
