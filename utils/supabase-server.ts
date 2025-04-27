@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Supabase 프로젝트 URL과 서비스 키가 필요합니다.
+// 서버 측에서만 사용할 Supabase 클라이언트
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 
@@ -8,8 +8,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
   throw new Error('Supabase URL과 Service Key가 환경변수에 설정되지 않았습니다.');
 }
 
-// 서버 측에서만 사용하는 클라이언트
-export const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+export const supabaseServer = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false
