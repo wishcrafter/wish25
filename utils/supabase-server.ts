@@ -3,7 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 // 주의: 이 파일은 서버 측에서만 가져와야 합니다!
 // 서버 측 환경 변수는 NEXT_PUBLIC_ 접두사를 사용하지 않습니다
 const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || '';
+// Vercel에 설정된 값 또는 로컬 환경변수 사용
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 if (!supabaseUrl || !supabaseServiceKey) {
   console.warn('[서버] SUPABASE_URL 또는 SUPABASE_SERVICE_KEY 환경 변수가 설정되지 않았습니다.');
