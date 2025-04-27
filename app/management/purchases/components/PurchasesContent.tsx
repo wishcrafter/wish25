@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, ReactNode } from 'react';
+import { useEffect, useState, ReactNode, useCallback } from 'react';
 import { supabase } from '@/utils/supabase';
 
 interface PurchaseData {
@@ -443,8 +443,8 @@ export default function PurchasesContent({
     }
   };
 
-  // 모달 열기
-  const handleOpenModal = () => {
+  // 모달 열기 함수를 메모이제이션
+  const handleOpenModal = useCallback(() => {
     setNewPurchase({
       store_id: lastInputInfo.store_id,
       vendor_id: lastInputInfo.vendor_id,
@@ -452,7 +452,7 @@ export default function PurchasesContent({
       amount: '0'
     });
     setIsModalOpen(true);
-  };
+  }, [lastInputInfo]);
 
   // 금액 입력 시 자동 콤마 추가
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
