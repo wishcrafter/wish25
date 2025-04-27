@@ -1,7 +1,11 @@
-import 'rc-slider/assets/index.css';
-import './globals.css';
-import React from 'react';
-import Sidebar from './components/Sidebar';
+import { Inter } from 'next/font/google'
+import './globals.css'
+import PageTemplate from './components/PageTemplate'
+import { metadata } from './metadata'
+
+const inter = Inter({ subsets: ['latin'] })
+
+export { metadata }
 
 export default function RootLayout({
   children,
@@ -10,13 +14,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-      <body>
-        <div className="layout">
-          <Sidebar />
-          <main className="main">
-            {children}
-          </main>
-        </div>
+      <body className={inter.className}>
+        <PageTemplate>
+          {children}
+        </PageTemplate>
       </body>
     </html>
   );

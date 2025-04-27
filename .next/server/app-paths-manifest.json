@@ -1,19 +1,8 @@
 {
-  "/_not-found/page": "app/_not-found/page.js",
-  "/dashboard/page": "app/dashboard/page.js",
-  "/management/w_customer/page": "app/management/w_customer/page.js",
-  "/dev/test/page": "app/dev/test/page.js",
-  "/dev/page": "app/dev/page.js",
-  "/management/page": "app/management/page.js",
-  "/management/others/page": "app/management/others/page.js",
   "/management/sales/page": "app/management/sales/page.js",
-  "/master/page": "app/master/page.js",
-  "/management/wstudio/page": "app/management/wstudio/page.js",
-  "/management/expenses/page": "app/management/expenses/page.js",
-  "/master/w_rooms/page": "app/master/w_rooms/page.js",
-  "/management/purchases/page": "app/management/purchases/page.js",
   "/page": "app/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/management/expenses/page": "app/management/expenses/page.js",
   "/login/page": "app/login/page.js",
-  "/master/vendors/page": "app/master/vendors/page.js",
-  "/master/stores/page": "app/master/stores/page.js"
+  "/management/others/page": "app/management/others/page.js"
 }

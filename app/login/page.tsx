@@ -1,27 +1,54 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Cookies from 'js-cookie';
 
 export default function LoginPage() {
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const router = useRouter();
 
-  useEffect(() => {
-    // 로그인 페이지 접속 시 바로 홈으로 리디렉션
-    router.push('/');
-  }, [router]);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password === process.env.NEXT_PUBLIC_PASSWORD) {
+      sessionStorage.setItem('isLoggedIn', 'true');
+      Cookies.set('isLoggedIn', 'true', { expires: 1 });
+      router.push('/');
+    } else {
+      setError('비밀번호가 올바르지 않습니다.');
+      setPassword('');
+    }
+  };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center" 
-         style={{ 
-           background: 'linear-gradient(180deg, #4a6cf7 0%, #2c3e50 100%)' 
-         }}>
-      <div className="w-full max-w-md px-8 py-10 mx-4 bg-white rounded-lg shadow-xl">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">주식회사 위시크래프터</h1>
-          <p className="text-lg text-gray-600">정산관리 시스템</p>
-        </div>
-        <p className="text-center">메인 페이지로 이동 중...</p>
+    <div className="login-container">
+      <div className="login-title">
+        <h1 className="company-name">주식회사 위시크래프터</h1>
+        <h2 className="system-name">정산 관리 시스템</h2>
+        <p className="english-name">Wiscrafter Corp. Settlement Management System</p>
+      </div>
+      
+      <div className="form-container">
+        <form onSubmit={handleSubmit} className="login-form">
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="비밀번호를 입력하세요"
+            className="password-input"
+            autoFocus
+          />
+          <div className="error-container">
+            {error && <p className="error-message">{error}</p>}
+          </div>
+          <button 
+            type="submit" 
+            className="login-button"
+          >
+            로그인
+          </button>
+        </form>
       </div>
     </div>
   );

@@ -1,6 +1,10 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+import Cookies from 'js-cookie';
+
 export default function Sidebar() {
+  const router = useRouter();
   const menuItems = [
     // 관리 메뉴
     { 
@@ -32,6 +36,12 @@ export default function Sidebar() {
     }
   ];
 
+  const handleLogout = () => {
+    Cookies.remove('isLoggedIn');
+    sessionStorage.removeItem('isLoggedIn');
+    router.push('/login');
+  };
+
   return (
     <aside className="sidebar">
       <nav>
@@ -56,6 +66,14 @@ export default function Sidebar() {
               </ul>
             </li>
           ))}
+          <li className="mt-auto">
+            <button 
+              onClick={handleLogout} 
+              className="nav-link w-full text-left text-red-200 hover:text-red-100"
+            >
+              로그아웃
+            </button>
+          </li>
         </ul>
       </nav>
     </aside>
