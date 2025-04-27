@@ -3,7 +3,12 @@
 import { useState } from 'react';
 import { supabase } from '@/utils/supabase';
 
-export default function CreateCustomerTable() {
+interface CreateCustomerTableProps {
+  onClose?: () => void;
+  onTableCreated?: () => void;
+}
+
+export default function CreateCustomerTable({ onClose, onTableCreated }: CreateCustomerTableProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -22,6 +27,11 @@ export default function CreateCustomerTable() {
       }
 
       setSuccess(true);
+      
+      // 성공 시 콜백 호출
+      if (onTableCreated) {
+        onTableCreated();
+      }
     } catch (err: any) {
       console.error('테이블 생성 중 오류 발생:', err);
       setError(err.message);
@@ -40,7 +50,7 @@ export default function CreateCustomerTable() {
           <p>테이블이 성공적으로 생성되었습니다. 페이지를 새로고침하면 데이터를 확인할 수 있습니다.</p>
           <button 
             className="btn btn-primary"
-            onClick={() => window.location.reload()}
+            onClick={() => onClose ? onClose() : window.location.reload()}
           >
             페이지 새로고침
           </button>

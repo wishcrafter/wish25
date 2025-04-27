@@ -250,9 +250,21 @@ export default function WCustomerContent({ statusFilter, onCustomerCreated, onLo
         <h3>테이블이 존재하지 않습니다</h3>
         <p>Supabase에 'w_customers' 테이블을 생성해야 합니다.</p>
         
-        <CreateCustomerTable />
+        <CreateCustomerTable 
+          onClose={() => window.location.reload()}
+          onTableCreated={() => {
+            setTableNotFound(false);
+            fetchCustomers();
+          }}
+        />
         
-        <DirectSQL />
+        <DirectSQL 
+          onClose={() => window.location.reload()}
+          onSuccess={() => {
+            setTableNotFound(false);
+            fetchCustomers();
+          }}
+        />
         
         <div className="table-create-guide">
           <h4>테이블 수동 생성 가이드:</h4>

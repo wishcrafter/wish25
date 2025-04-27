@@ -3,7 +3,12 @@
 import { useState } from 'react';
 import { supabase } from '@/utils/supabase';
 
-export default function DirectSQL() {
+interface DirectSQLProps {
+  onClose?: () => void;
+  onSuccess?: () => void;
+}
+
+export default function DirectSQL({ onClose, onSuccess }: DirectSQLProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -76,6 +81,11 @@ export default function DirectSQL() {
       }
 
       setSuccess(true);
+      
+      // 성공 콜백 실행
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (err: any) {
       console.error('직접 SQL로 테이블 생성 중 오류 발생:', err);
       setError(err.message);
@@ -95,7 +105,7 @@ export default function DirectSQL() {
           <p>SQL이 성공적으로 실행되었습니다. 페이지를 새로고침하면 데이터를 확인할 수 있습니다.</p>
           <button 
             className="btn btn-primary"
-            onClick={() => window.location.reload()}
+            onClick={() => onClose ? onClose() : window.location.reload()}
           >
             페이지 새로고침
           </button>
