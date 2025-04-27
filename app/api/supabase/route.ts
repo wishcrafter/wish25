@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/utils/supabase';
+import { supabaseServer } from '../../../utils/supabase-server';
 
 export async function POST(request: Request) {
   try {
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     
     // 읽기 작업
     if (action === 'select') {
-      const { data: result, error } = await supabase
+      const { data: result, error } = await supabaseServer
         .from(table)
         .select(data.select || '*')
         .order(data.orderBy || 'id', { ascending: data.ascending !== false });
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     
     // 쓰기 작업 (insert)
     if (action === 'insert') {
-      const { data: result, error } = await supabase
+      const { data: result, error } = await supabaseServer
         .from(table)
         .insert(data.values)
         .select();
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     
     // 수정 작업 (update)
     if (action === 'update') {
-      const { data: result, error } = await supabase
+      const { data: result, error } = await supabaseServer
         .from(table)
         .update(data.values)
         .match(data.match)
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     
     // 삭제 작업 (delete)
     if (action === 'delete') {
-      const { data: result, error } = await supabase
+      const { data: result, error } = await supabaseServer
         .from(table)
         .delete()
         .match(data.match);
