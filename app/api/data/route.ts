@@ -5,7 +5,62 @@ import { SupabaseClient } from '@supabase/supabase-js';
 // 안전하게 서버에서 데이터를 가져오는 API 라우트
 export async function POST(request: NextRequest) {
   try {
-    const { table, query } = await request.json();
+    const body = await request.json();
+    const { action } = body;
+
+    // 테이블 생성 요청 처리
+    if (action === 'create_table') {
+      const { tableName } = body;
+      
+      // 승인된 테이블 이름만 허용
+      const allowedTables = ['w_customers', 'w_rooms', 'stores', 'vendors'];
+      if (!allowedTables.includes(tableName)) {
+        return NextResponse.json(
+          { success: false, message: '승인되지 않은 테이블에 접근할 수 없습니다.' },
+          { status: 403 }
+        );
+      }
+
+      // CREATE TABLE SQL 실행
+      const createTableSQL = `
+        CREATE TABLE IF NOT EXISTS ${tableName} (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          room_no INTEGER,
+          name VARCHAR(50) NOT NULL,
+          deposit INTEGER DEFAULT 0,
+          monthly_fee INTEGER DEFAULT 0,
+          first_fee INTEGER DEFAULT 0,
+          move_in_date DATE,
+          move_out_date DATE,
+          status VARCHAR(10) DEFAULT '입실',
+          memo TEXT,
+          resident_id VARCHAR(20),
+          phone VARCHAR(20),
+          phone_sub VARCHAR(20),
+          address TEXT,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+      `;
+
+      // Supabase RPC를 통한 SQL 쿼리 실행
+      const { data, error: execError } = await supabase.rpc('exec_sql', {
+        sql_query: createTableSQL
+      });
+
+      if (execError) {
+        console.error('테이블 생성 오류:', execError);
+        return NextResponse.json(
+          { success: false, message: execError.message },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({ success: true, data });
+    }
+
+    // 다른 작업 처리
+    const { table, query } = body;
     
     // 테이블 이름 유효성 검사 (보안 강화)
     const validTables = ['stores', 'vendors', 'purchases', 'sales', 'expenses', 'others', 'wstudio', 'wcustomers'];
@@ -57,9 +112,9 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({ data: result.data });
   } catch (error: any) {
-    console.error('서버 API 오류:', error.message);
+    console.error('API 오류:', error.message);
     return NextResponse.json(
-      { error: error.message || '서버 오류가 발생했습니다' },
+      { success: false, message: error.message },
       { status: 500 }
     );
   }
