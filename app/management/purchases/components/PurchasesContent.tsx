@@ -1,7 +1,12 @@
 'use client';
 
 import { useEffect, useState, ReactNode, useCallback } from 'react';
-import { supabase } from '@/utils/supabase';
+import { fetchData, insertData, updateData, deleteData } from '../../../../utils/supabase-client-api';
+
+interface StoreInfo {
+  store_id: number;
+  store_name: string;
+}
 
 interface PurchaseData {
   id: number;
@@ -80,7 +85,7 @@ export default function PurchasesContent({
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
   const [selectedMonth, setSelectedMonth] = useState<string>((new Date().getMonth() + 1).toString().padStart(2, '0'));
   const [selectedStores, setSelectedStores] = useState<Set<string>>(new Set());
-  const [availableStores, setAvailableStores] = useState<{store_id: number; store_name: string}[]>([]);
+  const [availableStores, setAvailableStores] = useState<StoreInfo[]>([]);
   const [allStoresSelected, setAllStoresSelected] = useState(true);
   const [vendors, setVendors] = useState<VendorData[]>([]);
   const [filteredPurchasesByDate, setFilteredPurchasesByDate] = useState<PurchaseData[]>([]);
@@ -125,22 +130,25 @@ export default function PurchasesContent({
     setLoading(true);
     try {
       // 모든 요청을 병렬로 실행
-      const [storesPromise, vendorsPromise, purchasesPromise] = [
-        supabase
-          .from('stores')
-          .select('store_id, store_name')
-          .not('store_name', 'eq', '위시크래프터')
-          .order('store_id'),
+      const [storesResponse, vendorsResponse, purchasesResponse] = await Promise.all([
+        fetchData('stores', {
+          select: 'store_id, store_name',
+          filters: {
+            not: { 'store_name': '위시크래프터' }
+          },
+          orderBy: 'store_id'
+        }),
           
-        supabase
-          .from('vendors')
-          .select('id, vendor_name, store_id, order, bank_account')
-          .eq('category', '매입')
-          .order('order', { ascending: true }),
+        fetchData('vendors', {
+          select: 'id, vendor_name, store_id, order, bank_account',
+          filters: {
+            eq: { 'category': '매입' }
+          },
+          orderBy: 'order'
+        }),
           
-        supabase
-          .from('purchases')
-          .select(`
+        fetchData('purchases', {
+          select: `
             id,
             store_id,
             vendor_id,
@@ -150,25 +158,28 @@ export default function PurchasesContent({
             updated_at,
             stores (store_name),
             vendors (vendor_name)
-          `)
-          .order('purchase_date', { ascending: false })
-      ];
-      
-      const [storesResult, vendorsResult, purchasesResult] = await Promise.all([
-        storesPromise, vendorsPromise, purchasesPromise
+          `,
+          orderBy: 'purchase_date',
+          ascending: false
+        })
       ]);
       
       // 오류 처리
-      if (storesResult.error) throw storesResult.error;
-      if (vendorsResult.error) throw vendorsResult.error;
-      if (purchasesResult.error) throw purchasesResult.error;
+      if (!storesResponse.success) throw new Error('점포 데이터 로딩 실패');
+      if (!vendorsResponse.success) throw new Error('거래처 데이터 로딩 실패');
+      if (!purchasesResponse.success) throw new Error('매입 데이터 로딩 실패');
       
       // 데이터 일괄 업데이트를 위한 임시 값
-      const newStores = storesResult.data || [];
-      const newVendors = vendorsResult.data || [];
+      const newStores: StoreInfo[] = storesResponse.data || [];
+      const newVendors = vendorsResponse.data || [];
+      
+      // 상태 업데이트를 일괄 처리
+      setAvailableStores(newStores);
+      setSelectedStores(new Set(newStores.map((store: StoreInfo) => store.store_name)));
+      setVendors(newVendors);
       
       // 매입 데이터 처리
-      const formattedData: PurchaseData[] = (purchasesResult.data as unknown as RawPurchaseData[]).map(item => ({
+      const formattedData: PurchaseData[] = (purchasesResponse.data || []).map((item: any) => ({
         id: item.id,
         store_id: item.store_id,
         vendor_id: item.vendor_id,
@@ -176,14 +187,10 @@ export default function PurchasesContent({
         amount: item.amount,
         created_at: item.created_at,
         updated_at: item.updated_at,
-        store_name: item.stores.store_name,
-        vendor_name: item.vendors.vendor_name
+        store_name: item.stores?.store_name || '알 수 없음',
+        vendor_name: item.vendors?.vendor_name || '알 수 없음'
       }));
       
-      // 상태 업데이트를 일괄 처리
-      setAvailableStores(newStores);
-      setSelectedStores(new Set(newStores.map(store => store.store_name)));
-      setVendors(newVendors);
       setPurchases(formattedData);
     } catch (err: any) {
       setError(err.message);
@@ -286,53 +293,62 @@ export default function PurchasesContent({
     setIsEditModalOpen(true);
   };
 
-  // 삭제 버튼 클릭 시 호출
+  // 삭제 버튼 클릭 핸들러
   const handleDeleteClick = async (id: number) => {
-    if (!window.confirm('정말로 이 매입 내역을 삭제하시겠습니까?')) {
-      return;
-    }
+    if (window.confirm('정말로 이 매입 내역을 삭제하시겠습니까?')) {
+      setLoading(true);
+      try {
+        console.log(`[PURCHASES] 매입 내역 삭제 시작: ID=${id}`);
+        const response = await deleteData('purchases', { id });
 
-    try {
-      const { error } = await supabase
-        .from('purchases')
-        .delete()
-        .eq('id', id);
+        if (!response.success) {
+          throw new Error('매입 내역 삭제 실패');
+        }
 
-      if (error) throw error;
-
-      // 성공적으로 삭제 후 데이터 새로고침
-      await fetchAllData();
-      alert('매입 내역이 삭제되었습니다.');
-    } catch (err: any) {
-      setError(err.message);
-      alert('삭제 중 오류가 발생했습니다.');
+        // 성공적으로 삭제 후 데이터 다시 가져오기
+        await fetchAllData();
+        alert('매입 내역이 삭제되었습니다.');
+      } catch (err: any) {
+        console.error('[PURCHASES] 매입 내역 삭제 오류:', err);
+        setError(err.message);
+        alert('삭제 중 오류가 발생했습니다.');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
   // 수정 폼 제출 처리
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+    
     try {
-      const { error } = await supabase
-        .from('purchases')
-        .update({
+      console.log(`[PURCHASES] 매입 내역 수정 시작: ID=${editingPurchase.id}`);
+      const response = await updateData('purchases', 
+        { id: editingPurchase.id },
+        {
           store_id: parseInt(editingPurchase.store_id),
           vendor_id: parseInt(editingPurchase.vendor_id),
           purchase_date: editingPurchase.purchase_date,
-          amount: parseInt(editingPurchase.amount.replace(/,/g, '')),
-        })
-        .eq('id', editingPurchase.id);
+          amount: parseInt(editingPurchase.amount.replace(/,/g, ''))
+        }
+      );
 
-      if (error) throw error;
+      if (!response.success) {
+        throw new Error('매입 내역 수정 실패');
+      }
 
-      // 성공적으로 업데이트 후 데이터 새로고침
+      // 성공적으로 업데이트 후 데이터 다시 가져오기
       await fetchAllData();
       setIsEditModalOpen(false);
       alert('매입 내역이 수정되었습니다.');
     } catch (err: any) {
-      console.error('Error updating purchase entry:', err);
+      console.error('[PURCHASES] 매입 내역 수정 오류:', err);
       setError(err.message);
       alert('수정 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -374,72 +390,86 @@ export default function PurchasesContent({
     return purchase[key]?.toString() || '-';
   };
 
-  // 점포별 거래처 매입금액 계산
+  // 점포별 매입 총액 계산
   const calculateStoreVendorTotals = (store: {store_id: number; store_name: string}) => {
     const storeData = filteredPurchasesByDate.filter(p => p.store_name === store.store_name);
-    const vendorTotals = new Map<string, number>();
-
-    // 해당 점포의 거래처만 필터링
-    const storeVendors = vendors.filter(v => v.store_id === store.store_id);
-
-    // 해당 점포의 거래처에 대해 초기값 0으로 설정
-    storeVendors.forEach(vendor => {
-      vendorTotals.set(vendor.vendor_name, 0);
-    });
-
-    // 실제 거래 데이터로 업데이트
+    
+    // 거래처별 매입 합계 계산
+    const vendorTotals: Record<string, number> = {};
     storeData.forEach(purchase => {
-      const key = purchase.vendor_name;
-      if (vendorTotals.has(key)) { // 해당 점포의 거래처인 경우에만 업데이트
-        vendorTotals.set(key, (vendorTotals.get(key) || 0) + purchase.amount);
+      if (!vendorTotals[purchase.vendor_name]) {
+        vendorTotals[purchase.vendor_name] = 0;
       }
+      vendorTotals[purchase.vendor_name] += purchase.amount;
     });
-
-    return vendorTotals;
+    
+    // 전체 합계 계산
+    const total = storeData.reduce((sum, item) => sum + item.amount, 0);
+    const count = storeData.length;
+    
+    return { total, count, vendorTotals };
   };
-
+  
   // 점포별 거래처 목록 가져오기
   const getStoreVendors = (store: {store_id: number; store_name: string}) => {
-    return vendors
-      .filter(v => v.store_id === store.store_id)
-      .sort((a, b) => a.order - b.order);
+    return vendors.filter(v => v.store_id === store.store_id);
   };
 
-  // 매입 등록 처리
+  // 새 항목 추가 폼 제출 처리
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+    
     try {
-      const { data, error } = await supabase
-        .from('purchases')
-        .insert([{
-          store_id: parseInt(newPurchase.store_id),
-          vendor_id: parseInt(newPurchase.vendor_id),
-          purchase_date: newPurchase.purchase_date,
-          amount: parseInt(newPurchase.amount.replace(/,/g, '')),
-        }]);
-
-      if (error) throw error;
-
-      // 직전 입력 정보 저장
+      // 입력값 검증
+      if (!newPurchase.store_id || !newPurchase.vendor_id || !newPurchase.purchase_date || !newPurchase.amount) {
+        throw new Error('모든 필수 항목을 입력해주세요.');
+      }
+      
+      // 금액에서 콤마 제거 후 숫자로 변환
+      const amountValue = parseInt(newPurchase.amount.replace(/,/g, ''));
+      if (isNaN(amountValue)) {
+        throw new Error('금액을 올바르게 입력해주세요.');
+      }
+      
+      console.log('[PURCHASES] 새 매입 내역 추가 시작');
+      const response = await insertData('purchases', {
+        store_id: parseInt(newPurchase.store_id),
+        vendor_id: parseInt(newPurchase.vendor_id),
+        purchase_date: newPurchase.purchase_date,
+        amount: amountValue
+      });
+      
+      if (!response.success) {
+        throw new Error('매입 내역 추가 실패');
+      }
+      
+      // 성공적으로 추가 후 데이터 다시 가져오기
+      await fetchAllData();
+      
+      // 입력 폼 초기화 및 모달 닫기
+      setNewPurchase({
+        store_id: newPurchase.store_id, // 마지막 선택한 점포는 유지
+        vendor_id: newPurchase.vendor_id, // 마지막 선택한 거래처도 유지
+        purchase_date: new Date().toISOString().split('T')[0],
+        amount: '0'
+      });
+      
+      // 마지막 입력 정보 저장 (다음 입력 시 편의성 제공)
       setLastInputInfo({
         store_id: newPurchase.store_id,
         vendor_id: newPurchase.vendor_id
       });
-
-      // 성공적으로 등록 후 데이터 새로고침
-      await fetchAllData();
+      
       setIsModalOpen(false);
       
-      // 새로운 입력을 위한 초기화 (이전 점포/거래처 정보 유지)
-      setNewPurchase({
-        store_id: newPurchase.store_id,
-        vendor_id: newPurchase.vendor_id,
-        purchase_date: new Date().toISOString().split('T')[0],
-        amount: '0'
-      });
+      alert('새 매입 내역이 추가되었습니다.');
     } catch (err: any) {
-      console.error('Error inserting purchase:', err);
+      console.error('[PURCHASES] 매입 내역 추가 오류:', err);
       setError(err.message);
+      alert(`추가 중 오류가 발생했습니다: ${err.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -648,10 +678,9 @@ export default function PurchasesContent({
         <div className="summary-grid">
           {/* 점포별 매입현황 */}
           {availableStores
-            .filter(store => ![2001].includes(store.store_id)) // 2001 제외
-            .map(store => {
-            const storeVendorTotals = calculateStoreVendorTotals(store);
-            const total = Array.from(storeVendorTotals.values()).reduce((sum, amount) => sum + amount, 0);
+            .filter((store: {store_id: number; store_name: string}) => ![2001].includes(store.store_id)) // 2001 제외
+            .map((store: {store_id: number; store_name: string}) => {
+            const { total, count, vendorTotals } = calculateStoreVendorTotals(store);
             const storeVendors = getStoreVendors(store);
             
             return (
@@ -663,7 +692,7 @@ export default function PurchasesContent({
                     <span className="amount-value">{formatAmount(total)}원</span>
                   </div>
                   {storeVendors.map(vendor => {
-                    const amount = storeVendorTotals.get(vendor.vendor_name) || 0;
+                    const amount = vendorTotals[vendor.vendor_name] || 0;
                     return (
                       <div key={vendor.id} className="amount-row vendor">
                         <span className="amount-label">{vendor.vendor_name}</span>
@@ -679,7 +708,7 @@ export default function PurchasesContent({
                   <div className="amount-row transactions">
                     <span className="amount-label">거래건수</span>
                     <span className="amount-value">
-                      {filteredPurchasesByDate.filter(p => p.store_name === store.store_name).length}건
+                      {count}건
                     </span>
                   </div>
                 </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/utils/supabase';
+import { fetchData } from '../../../../utils/supabase-client-api';
 
 interface RoomData {
   room_no: number;
@@ -62,16 +62,17 @@ export default function WRoomsContent({ onLoadingChange, onErrorChange }: WRooms
           setLoading(true);
         }
         
-        const { data, error } = await supabase
-          .from('w_rooms')
-          .select('*')
-          .order('room_no', { ascending: true });
-
-        if (error) {
-          throw error;
+        const result = await fetchData('w_rooms', {
+          select: '*',
+          orderBy: 'room_no',
+          ascending: true
+        });
+        
+        if (!result.success) {
+          throw new Error(result.message);
         }
 
-        setRooms(data || []);
+        setRooms(result.data || []);
       } catch (err: any) {
         console.error('Error fetching 스튜디오 방 정보:', err);
         setError(err.message);

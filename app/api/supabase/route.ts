@@ -6,14 +6,14 @@ export async function POST(request: Request) {
     // API 호출 로그 추가
     console.log('[API/supabase] 요청 시작');
     
-    const { action, table, data, filters } = await request.json();
+    const { action, table, data, filters, functionName } = await request.json();
     
     // Supabase 상태 확인 로그
     console.log('[API/supabase] 테이블:', table);
     console.log('[API/supabase] 액션:', action);
     
     // 승인된 테이블만 접근 허용
-    const allowedTables = ['stores', 'vendors', 'w_customers', 'w_rooms', 'sales', 'others', 'expenses'];
+    const allowedTables = ['stores', 'purchases', 'vendors', 'wstudio', 'w_customers', 'w_rooms', 'sales', 'others', 'expenses'];
     if (!allowedTables.includes(table)) {
       console.warn(`[API/supabase] 승인되지 않은 테이블 접근 시도: ${table}`);
       return NextResponse.json(
@@ -125,6 +125,22 @@ export async function POST(request: Request) {
       
       console.log('[API/supabase] DELETE 쿼리 성공');
       return NextResponse.json({ success: true });
+    }
+    
+    // 함수 호출 (RPC)
+    if (action === 'function') {
+      const funcName = functionName || '';
+      console.log(`[API/supabase] RPC 함수 호출: ${funcName}`);
+      
+      const { data: result, error } = await supabase.rpc(funcName, data || {});
+      
+      if (error) {
+        console.error('[API/supabase] RPC 함수 호출 오류:', error);
+        throw error;
+      }
+      
+      console.log('[API/supabase] RPC 함수 호출 성공');
+      return NextResponse.json({ success: true, data: result });
     }
     
     console.warn(`[API/supabase] 지원되지 않는 작업: ${action}`);

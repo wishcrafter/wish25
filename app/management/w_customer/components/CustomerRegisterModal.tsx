@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '@/utils/supabase';
+import { insertData } from '../../../../utils/supabase-client-api';
 
 interface CustomerData {
   room_no: number;
@@ -69,15 +69,13 @@ export default function CustomerRegisterModal({
       setError(null);
       
       // Supabase에 새 고객 데이터 추가
-      const { error: insertError } = await supabase
-        .from('w_customers')
-        .insert([{
-          ...newCustomer,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }]);
+      const result = await insertData('w_customers', {
+        ...newCustomer,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
       
-      if (insertError) throw insertError;
+      if (!result.success) throw new Error(result.message);
       
       // 성공 시 콜백 호출 및 모달 닫기
       onCustomerCreated();
@@ -190,7 +188,10 @@ export default function CustomerRegisterModal({
                 <option value="입실">입실</option>
                 <option value="퇴실">퇴실</option>
                 <option value="예약">예약</option>
+                {/* 허용된 상태 값만 표시 */}
+                {/* Supabase의 체크 제약조건에 맞는지 확인 */}
               </select>
+              <p className="form-hint">* 테이블 제약조건에 맞는 상태값만 사용하세요.</p>
             </div>
             
             <div className="form-group">

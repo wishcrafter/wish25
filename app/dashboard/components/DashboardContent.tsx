@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { supabase } from '@/utils/supabase';
+import { fetchData } from '../../../utils/supabase-client-api';
 import MonthRangeSlider from './MonthRangeSlider';
 
 interface SummaryData {
@@ -298,7 +298,7 @@ export default function DashboardContent() {
   };
 
   // 데이터 가져오기
-  const fetchData = async () => {
+  const fetchAllData = async () => {
     setLoading(true);
     setError('');
     
@@ -308,46 +308,55 @@ export default function DashboardContent() {
     
     while (retryCount < maxRetries) {
       try {
+        console.log('[DASHBOARD] 대시보드 데이터 로딩 시작');
+        
         // 모든 데이터를 병렬로 가져오기
         const [
-          storesResult, 
-          salesResult, 
-          purchasesResult, 
-          expensesResult, 
-          othersResult, 
-          wstudioResult
+          storesResponse, 
+          salesResponse, 
+          purchasesResponse, 
+          expensesResponse, 
+          othersResponse, 
+          wstudioResponse
         ] = await Promise.all([
-          supabase.from('stores').select('*').order('store_id'),
-          supabase.from('sales').select('*'),
-          supabase.from('purchases').select('*'),
-          supabase.from('expenses').select(`
-            *,
-            vendors (
-              id,
-              vendor_name,
-              category
-            )
-          `).eq('year', parseInt(selectedYear)),
-          supabase.from('others').select('*'),
-          supabase.from('wstudio').select('*').order('date', { ascending: false })
+          fetchData('stores', { orderBy: 'store_id' }),
+          fetchData('sales', {}),
+          fetchData('purchases', {}),
+          fetchData('expenses', { 
+            select: `
+              *,
+              vendors (
+                id,
+                vendor_name,
+                category
+              )
+            `,
+            filters: {
+              eq: { 'year': parseInt(selectedYear) }
+            }
+          }),
+          fetchData('others', {}),
+          fetchData('wstudio', { orderBy: 'date', ascending: false })
         ]);
 
         // 에러 체크
-        if (storesResult.error) throw new Error(`점포 데이터 로딩 오류: ${storesResult.error.message}`);
-        if (salesResult.error) throw new Error(`매출 데이터 로딩 오류: ${salesResult.error.message}`);
-        if (purchasesResult.error) throw new Error(`매입 데이터 로딩 오류: ${purchasesResult.error.message}`);
-        if (expensesResult.error) throw new Error(`고정비용 데이터 로딩 오류: ${expensesResult.error.message}`);
-        if (othersResult.error) throw new Error(`기타거래 데이터 로딩 오류: ${othersResult.error.message}`);
-        if (wstudioResult.error) throw new Error(`WStudio 데이터 로딩 오류: ${wstudioResult.error.message}`);
+        if (!storesResponse.success) throw new Error(`점포 데이터 로딩 오류: ${storesResponse.message || '알 수 없는 오류'}`);
+        if (!salesResponse.success) throw new Error(`매출 데이터 로딩 오류: ${salesResponse.message || '알 수 없는 오류'}`);
+        if (!purchasesResponse.success) throw new Error(`매입 데이터 로딩 오류: ${purchasesResponse.message || '알 수 없는 오류'}`);
+        if (!expensesResponse.success) throw new Error(`고정비용 데이터 로딩 오류: ${expensesResponse.message || '알 수 없는 오류'}`);
+        if (!othersResponse.success) throw new Error(`기타거래 데이터 로딩 오류: ${othersResponse.message || '알 수 없는 오류'}`);
+        if (!wstudioResponse.success) throw new Error(`WStudio 데이터 로딩 오류: ${wstudioResponse.message || '알 수 없는 오류'}`);
+
+        console.log('[DASHBOARD] 모든 데이터 로딩 완료');
 
         // 데이터 설정
-        setStores(storesResult.data || []);
+        setStores(storesResponse.data || []);
         setAllData({
-          sales: salesResult.data || [],
-          purchases: purchasesResult.data || [],
-          expenses: expensesResult.data || [],
-          others: othersResult.data || [],
-          wstudio: wstudioResult.data || []
+          sales: salesResponse.data || [],
+          purchases: purchasesResponse.data || [],
+          expenses: expensesResponse.data || [],
+          others: othersResponse.data || [],
+          wstudio: wstudioResponse.data || []
         });
         
         setLoading(false);
@@ -356,6 +365,7 @@ export default function DashboardContent() {
         
       } catch (err) {
         retryCount++;
+        console.error(`[DASHBOARD] 데이터 로딩 시도 ${retryCount}/${maxRetries} 실패:`, err);
         
         if (retryCount === maxRetries) {
           setError(`데이터를 불러오는 중 오류가 발생했습니다: ${err instanceof Error ? err.message : '알 수 없는 오류'}. 인터넷 연결을 확인하고 페이지를 새로고침하세요.`);
@@ -371,7 +381,7 @@ export default function DashboardContent() {
   // 컴포넌트 첫 마운트 시 데이터 로드
   useEffect(() => {
     if (isInitialLoad) {
-      fetchData();
+      fetchAllData();
       setIsInitialLoad(false);
     }
   }, [isInitialLoad]);
@@ -379,7 +389,7 @@ export default function DashboardContent() {
   // 선택된 연도가 변경되면 데이터 다시 불러오기
   useEffect(() => {
     if (!isInitialLoad) {
-      fetchData();
+      fetchAllData();
     }
   }, [selectedYear]);
   

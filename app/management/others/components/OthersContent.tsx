@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, ReactNode, useCallback } from 'react';
-import { supabase } from '@/utils/supabase';
+import { fetchData, insertData, updateData, deleteData } from '../../../../utils/supabase-client-api';
 
 interface OtherData {
   id: number;
@@ -82,52 +82,60 @@ export default function OthersContent({
 
   // 삭제 버튼 클릭 시 호출
   const handleDeleteClick = async (id: number) => {
-    if (!window.confirm('정말로 이 거래 내역을 삭제하시겠습니까?')) {
-      return;
-    }
+    if (window.confirm('정말로 이 항목을 삭제하시겠습니까?')) {
+      setLoading(true);
+      try {
+        console.log(`[OTHERS] 거래 내역 삭제 시작: ID=${id}`);
+        const response = await deleteData('others', { id });
 
-    try {
-      const { error } = await supabase
-        .from('others')
-        .delete()
-        .eq('id', id);
+        if (!response.success) {
+          throw new Error('거래 내역 삭제 실패');
+        }
 
-      if (error) throw error;
-
-      // 성공적으로 삭제 후 데이터 새로고침
-      await fetchOthers();
-      alert('거래 내역이 삭제되었습니다.');
-    } catch (err: any) {
-      console.error('Error deleting other entry:', err);
-      setError(err.message);
-      alert('삭제 중 오류가 발생했습니다.');
+        // 성공적으로 삭제 후 데이터 새로고침
+        await fetchOthers();
+        alert('거래 내역이 삭제되었습니다.');
+      } catch (err: any) {
+        console.error('[OTHERS] 거래 내역 삭제 오류:', err);
+        setError(err.message);
+        alert('삭제 중 오류가 발생했습니다.');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
   // 수정 폼 제출 처리
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+    
     try {
-      const { error } = await supabase
-        .from('others')
-        .update({
+      console.log(`[OTHERS] 거래 내역 수정 시작: ID=${editingOther.id}`);
+      const response = await updateData('others', 
+        { id: editingOther.id },
+        {
           store_id: parseInt(editingOther.store_id),
           date: editingOther.date,
           amount: parseInt(editingOther.amount.replace(/,/g, '')),
           details: editingOther.details
-        })
-        .eq('id', editingOther.id);
+        }
+      );
 
-      if (error) throw error;
+      if (!response.success) {
+        throw new Error('거래 내역 수정 실패');
+      }
 
       // 성공적으로 업데이트 후 데이터 새로고침
       await fetchOthers();
       setIsEditModalOpen(false);
       alert('거래 내역이 수정되었습니다.');
     } catch (err: any) {
-      console.error('Error updating other entry:', err);
+      console.error('[OTHERS] 거래 내역 수정 오류:', err);
       setError(err.message);
       alert('수정 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -153,16 +161,21 @@ export default function OthersContent({
   // 점포 목록을 가져오는 함수
   const fetchStores = async () => {
     try {
-      const { data: stores, error } = await supabase
-        .from('stores')
-        .select('store_id, store_name')
-        .order('store_id');
+      console.log('[OTHERS] 점포 목록 로딩 시작');
+      const response = await fetchData('stores', {
+        select: 'store_id, store_name',
+        orderBy: 'store_id'
+      });
 
-      if (error) throw error;
+      if (!response.success) {
+        throw new Error('점포 데이터 로딩 실패');
+      }
 
-      setAvailableStores(stores);
-      setSelectedStores(new Set(stores.map(store => store.store_name)));
+      console.log(`[OTHERS] 점포 목록 로딩 완료: ${response.data?.length || 0}개 점포`);
+      setAvailableStores(response.data);
+      setSelectedStores(new Set(response.data.map((store: {store_id: number, store_name: string}) => store.store_name)));
     } catch (err: any) {
+      console.error('[OTHERS] 점포 목록 로딩 오류:', err);
       setError(err.message);
     }
   };
@@ -171,46 +184,75 @@ export default function OthersContent({
   const fetchOthers = async () => {
     try {
       setLoading(true);
+      console.log('[OTHERS] 기타 거래 데이터 로딩 시작');
       
       // 두 개의 개별 쿼리를 병렬로 실행
-      const [othersResult, storesResult] = await Promise.all([
-        supabase
-          .from('others')
-          .select('*')
-          .order('date', { ascending: false }),
-        supabase
-          .from('stores')
-          .select('store_id, store_name')
+      const [othersResponse, storesResponse] = await Promise.all([
+        fetchData('others', {
+          orderBy: 'date',
+          ascending: false
+        }),
+        fetchData('stores', {
+          select: 'store_id, store_name'
+        })
       ]);
 
-      if (othersResult.error) throw othersResult.error;
-      if (storesResult.error) throw storesResult.error;
+      if (!othersResponse.success) {
+        throw new Error('기타 거래 데이터 로딩 실패');
+      }
+      if (!storesResponse.success) {
+        throw new Error('점포 데이터 로딩 실패');
+      }
+
+      console.log(`[OTHERS] 데이터 로딩 완료: ${othersResponse.data?.length || 0}개 거래, ${storesResponse.data?.length || 0}개 점포`);
 
       // 점포 ID를 키로, 점포명을 값으로 하는 맵 생성
       const storeMap = new Map();
-      storesResult.data.forEach(store => {
+      storesResponse.data.forEach((store: { store_id: number, store_name: string }) => {
         storeMap.set(store.store_id, store.store_name);
       });
 
       // 데이터 형식 변환 - 기존 데이터와 새 데이터 병합하여 불필요한 리렌더링 방지
-      const formattedData: OtherData[] = (othersResult.data || []).map(item => ({
+      const formattedData: OtherData[] = (othersResponse.data || []).map((item: any) => ({
         id: item.id,
         store_id: item.store_id,
         date: item.date,
         amount: item.amount,
-        details: item.details || '',
+        details: item.details,
         created_at: item.created_at,
         updated_at: item.updated_at,
         store_name: storeMap.get(item.store_id) || '알 수 없음'
       }));
 
+      // 로컬 상태 업데이트
       setOthers(formattedData);
-      setAvailableStores(storesResult.data || []);
-      setSelectedStores(new Set(storesResult.data.map(store => store.store_name)));
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
+      
+      // 로딩 상태 해제
       setLoading(false);
+      
+      // 부모 컴포넌트에 상태 변경 알림
+      if (onLoadingChange) {
+        onLoadingChange(false);
+      }
+      if (onErrorChange) {
+        onErrorChange(null);
+      }
+      
+      return true;
+    } catch (err: any) {
+      console.error('[OTHERS] 데이터 로딩 오류:', err);
+      setError(err.message);
+      setLoading(false);
+      
+      // 부모 컴포넌트에 상태 변경 알림
+      if (onLoadingChange) {
+        onLoadingChange(false);
+      }
+      if (onErrorChange) {
+        onErrorChange(err.message);
+      }
+      
+      return false;
     }
   };
 
@@ -315,39 +357,60 @@ export default function OthersContent({
     return { total, count };
   };
 
-  // 기타 거래 등록 처리
+  // 새 항목 추가 폼 제출 처리
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+    
     try {
-      const { data, error } = await supabase
-        .from('others')
-        .insert([{
-          store_id: parseInt(newOther.store_id),
-          date: newOther.date,
-          amount: parseInt(newOther.amount.replace(/,/g, '')),
-          details: newOther.details,
-        }]);
-
-      if (error) throw error;
-
-      // 직전 입력 정보 저장
-      setLastInputInfo({
-        store_id: newOther.store_id
-      });
-
-      // 성공적으로 등록 후 데이터 새로고침
-      await fetchOthers();
-      setIsModalOpen(false);
+      // 입력값 검증
+      if (!newOther.store_id || !newOther.date || !newOther.amount) {
+        throw new Error('모든 필수 항목을 입력해주세요.');
+      }
       
-      // 새로운 입력을 위한 초기화 (이전 점포 정보 유지)
+      // 금액에서 콤마 제거 후 숫자로 변환
+      const amountValue = parseInt(newOther.amount.replace(/,/g, ''));
+      if (isNaN(amountValue)) {
+        throw new Error('금액을 올바르게 입력해주세요.');
+      }
+      
+      console.log('[OTHERS] 새 거래 내역 추가 시작');
+      const response = await insertData('others', {
+        store_id: parseInt(newOther.store_id),
+        date: newOther.date,
+        amount: amountValue,
+        details: newOther.details
+      });
+      
+      if (!response.success) {
+        throw new Error('거래 내역 추가 실패');
+      }
+      
+      // 성공적으로 추가 후 데이터 새로고침
+      await fetchOthers();
+      
+      // 입력 폼 초기화 및 모달 닫기
       setNewOther({
-        store_id: newOther.store_id,
+        store_id: newOther.store_id, // 마지막 선택한 점포는 유지
         date: new Date().toISOString().split('T')[0],
         amount: '0',
         details: ''
       });
+      
+      // 마지막 입력 정보 저장 (다음 입력 시 편의성 제공)
+      setLastInputInfo({
+        store_id: newOther.store_id
+      });
+      
+      setIsModalOpen(false);
+      
+      alert('새 거래 내역이 추가되었습니다.');
     } catch (err: any) {
+      console.error('[OTHERS] 거래 내역 추가 오류:', err);
       setError(err.message);
+      alert(`추가 중 오류가 발생했습니다: ${err.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 

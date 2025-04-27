@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '@/utils/supabase';
+import { callCustomFunction } from '../../../../utils/supabase-client-api';
 
 interface DirectSQLProps {
   onClose?: () => void;
@@ -20,7 +20,7 @@ export default function DirectSQL({ onClose, onSuccess }: DirectSQLProps) {
       setSuccess(false);
 
       // 테이블 생성 직접 SQL 쿼리 실행
-      const { error: createTableError } = await supabase.rpc('exec_sql', { 
+      const result = await callCustomFunction('exec_sql', { 
         sql_query: `
           CREATE TABLE IF NOT EXISTS public.w_customers (
             id serial PRIMARY KEY,
@@ -31,7 +31,7 @@ export default function DirectSQL({ onClose, onSuccess }: DirectSQLProps) {
             first_fee integer,
             move_in_date date,
             move_out_date date,
-            status varchar,
+            status varchar CHECK (status IN ('입실', '퇴실', '예약')),
             memo text,
             resident_id varchar,
             phone varchar,
@@ -76,8 +76,8 @@ export default function DirectSQL({ onClose, onSuccess }: DirectSQLProps) {
         `
       });
 
-      if (createTableError) {
-        throw createTableError;
+      if (!result.success) {
+        throw new Error(result.message || 'SQL 실행 중 오류가 발생했습니다.');
       }
 
       setSuccess(true);

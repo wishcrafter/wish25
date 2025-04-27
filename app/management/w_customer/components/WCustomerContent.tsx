@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/utils/supabase';
+import { fetchData, updateData, deleteData, insertData } from '../../../../utils/supabase-client-api';
 import CreateCustomerTable from './CreateCustomerTable';
 import DirectSQL from './DirectSQL';
 import CustomerDetailModal from './CustomerDetailModal';
@@ -88,7 +88,7 @@ export default function WCustomerContent({ statusFilter, onCustomerCreated, onLo
     if (statusFilter === '전체') {
       setFilteredCustomers(customers);
     } else {
-      setFilteredCustomers(customers.filter(customer => customer.status === statusFilter));
+      setFilteredCustomers(customers.filter((customer: CustomerData) => customer.status === statusFilter));
     }
   }, [statusFilter, customers]);
 
@@ -114,42 +114,27 @@ export default function WCustomerContent({ statusFilter, onCustomerCreated, onLo
     try {
       setLoading(true);
       
-      // 먼저 '입주중' 상태를 '입실'로 업데이트
-      try {
-        const { error: updateError } = await supabase
-          .from('w_customers')
-          .update({ status: '입실' })
-          .eq('status', '입주중');
-          
-        if (updateError && !updateError.message.includes('does not exist')) {
-          console.error('상태 업데이트 중 오류:', updateError);
-        }
-      } catch (updateErr) {
-        console.error('상태 업데이트 시도 중 오류:', updateErr);
-      }
-      
-      const { data, error } = await supabase
-        .from('w_customers')
-        .select('*')
-        .order('room_no', { ascending: true });
+      const result = await fetchData('w_customers', {
+        select: '*',
+        orderBy: 'room_no',
+        ascending: true
+      });
 
-      if (error) {
+      if (!result.success) {
         // 테이블이 존재하지 않는 경우 특별 처리
-        if (error.message.includes('does not exist') || error.message.includes('relation "public.w_customers"')) {
+        if (result.message.includes('does not exist') || result.message.includes('relation "public.w_customers"')) {
           setTableNotFound(true);
-          console.error('w_customers 테이블이 존재하지 않습니다:', error);
         } else {
-          console.error('Error fetching W스튜디오 고객 정보:', error);
         }
-        throw error;
+        throw new Error(result.message);
       }
 
-      setCustomers(data || []);
+      setCustomers(result.data || []);
       // 초기 필터링 적용
       if (statusFilter === '전체') {
-        setFilteredCustomers(data || []);
+        setFilteredCustomers(result.data || []);
       } else {
-        setFilteredCustomers((data || []).filter(customer => customer.status === statusFilter));
+        setFilteredCustomers((result.data || []).filter((customer: CustomerData) => customer.status === statusFilter));
       }
     } catch (err: any) {
       setError(err.message);
@@ -197,46 +182,67 @@ export default function WCustomerContent({ statusFilter, onCustomerCreated, onLo
   // 고객 정보 업데이트 핸들러
   const handleCustomerUpdate = async (updatedCustomer: CustomerData) => {
     try {
-      const { error } = await supabase
-        .from('w_customers')
-        .update({
-          room_no: updatedCustomer.room_no,
-          name: updatedCustomer.name,
-          deposit: updatedCustomer.deposit,
-          monthly_fee: updatedCustomer.monthly_fee,
-          first_fee: updatedCustomer.first_fee,
-          move_in_date: updatedCustomer.move_in_date,
-          move_out_date: updatedCustomer.move_out_date,
-          status: updatedCustomer.status,
-          memo: updatedCustomer.memo,
-          resident_id: updatedCustomer.resident_id,
-          phone: updatedCustomer.phone,
-          phone_sub: updatedCustomer.phone_sub,
-          address: updatedCustomer.address,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', updatedCustomer.id);
-      
-      if (error) throw error;
-      
-      // 고객 목록 업데이트
-      const updatedCustomers = customers.map(c => 
-        c.id === updatedCustomer.id ? updatedCustomer : c
+      const result = await updateData('w_customers', 
+        updatedCustomer, 
+        { id: updatedCustomer.id }
       );
-      setCustomers(updatedCustomers);
-      
-      // 필터링된 목록도 업데이트
-      if (statusFilter === '전체') {
-        setFilteredCustomers(updatedCustomers);
-      } else {
-        setFilteredCustomers(updatedCustomers.filter(c => c.status === statusFilter));
+
+      if (!result.success) {
+        throw new Error(result.message);
       }
-      
-      // 모달 닫기
-      setModalOpen(false);
+
+      // 업데이트 성공 시 고객 목록 새로고침
+      fetchCustomers();
+      return true;
     } catch (err: any) {
-      console.error('고객 정보 업데이트 중 오류:', err);
-      alert(`고객 정보 업데이트 실패: ${err.message}`);
+      setError(err.message);
+      return false;
+    }
+  };
+
+  // 고객 삭제 핸들러
+  const handleCustomerDelete = async (customerId: number) => {
+    if (!confirm('정말로 이 고객 정보를 삭제하시겠습니까?')) {
+      return false;
+    }
+
+    try {
+      const result = await deleteData('w_customers', { id: customerId });
+
+      if (!result.success) {
+        throw new Error(result.message);
+      }
+
+      // 삭제 성공 시 고객 목록 새로고침
+      fetchCustomers();
+      return true;
+    } catch (err: any) {
+      setError(err.message);
+      return false;
+    }
+  };
+
+  // 테이블 생성 완료 후 처리
+  const handleTableCreated = () => {
+    setTableNotFound(false);
+    fetchCustomers();  // 테이블 생성 후 고객 목록 조회
+  };
+
+  // 고객 등록 완료 핸들러
+  const handleCustomerRegistered = async (customerData: Omit<CustomerData, 'id' | 'created_at' | 'updated_at'>) => {
+    try {
+      const result = await insertData('w_customers', customerData);
+
+      if (!result.success) {
+        throw new Error(result.message);
+      }
+
+      // 등록 성공 시 고객 목록 새로고침
+      fetchCustomers();
+      return true;
+    } catch (err: any) {
+      setError(err.message);
+      return false;
     }
   };
 

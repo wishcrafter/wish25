@@ -32,7 +32,6 @@ export async function fetchData(table: string, options: {
     
     return result.data;
   } catch (error: any) {
-    console.error(`${table} 데이터 로딩 오류:`, error.message);
     throw error;
   }
 }
@@ -62,7 +61,6 @@ export async function insertData(table: string, data: any) {
     
     return result.data;
   } catch (error: any) {
-    console.error(`${table} 데이터 추가 오류:`, error.message);
     throw error;
   }
 }
@@ -93,7 +91,6 @@ export async function updateData(table: string, data: any, match: {column: strin
     
     return result.data;
   } catch (error: any) {
-    console.error(`${table} 데이터 수정 오류:`, error.message);
     throw error;
   }
 }
@@ -123,7 +120,6 @@ export async function deleteData(table: string, match: {column: string; value: a
     
     return result.data;
   } catch (error: any) {
-    console.error(`${table} 데이터 삭제 오류:`, error.message);
     throw error;
   }
 } 

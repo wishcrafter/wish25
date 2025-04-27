@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '@/utils/supabase';
+import { callCustomFunction } from '../../../../utils/supabase-client-api';
 
 interface CreateCustomerTableProps {
   onClose?: () => void;
@@ -19,11 +19,11 @@ export default function CreateCustomerTable({ onClose, onTableCreated }: CreateC
       setError(null);
       setSuccess(false);
 
-      // 테이블 생성 SQL 쿼리
-      const { error: createTableError } = await supabase.rpc('create_w_customers_table');
+      // 함수 호출을 통해 테이블 생성
+      const result = await callCustomFunction('create_w_customers_table');
 
-      if (createTableError) {
-        throw createTableError;
+      if (!result.success) {
+        throw new Error(result.message || '테이블 생성 중 오류가 발생했습니다.');
       }
 
       setSuccess(true);

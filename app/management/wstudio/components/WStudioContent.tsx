@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { supabase } from '@/utils/supabase';
+import { fetchData, updateData } from '../../../../utils/supabase-client-api';
 
 interface WStudioData {
   id: number;
@@ -88,27 +88,27 @@ export default function WStudioContent(props: WStudioContentProps) {
       
       // 병렬로 데이터 요청
       const [transactionsResult, customersResult] = await Promise.all([
-        supabase
-          .from('wstudio')
-          .select('*')
-          .order('date', { ascending: false })
-          .order('time', { ascending: false }),
-          
-        supabase
-          .from('w_customers')
-          .select('id, name, room_no, status, memo')
-          .eq('status', '입실')
+        fetchData('wstudio', {
+          select: '*',
+          orderBy: 'date',
+          ascending: false
+        }),
+        
+        fetchData('w_customers', {
+          select: 'id, name, room_no, status, memo',
+          filters: { status: '입실' }
+        })
       ]);
 
       // 트랜잭션 데이터 처리
-      if (transactionsResult.error) {
-        setError(transactionsResult.error.message);
+      if (!transactionsResult.success) {
+        setError(transactionsResult.message);
       } else if (transactionsResult.data) {
         setTransactions(transactionsResult.data);
       }
       
       // 고객 데이터 처리
-      if (customersResult.error) {
+      if (!customersResult.success) {
         // 오류 발생 시 조용히 처리
       } else if (customersResult.data) {
         setCustomers(customersResult.data);
@@ -123,17 +123,17 @@ export default function WStudioContent(props: WStudioContentProps) {
   // 고객 데이터를 가져오는 함수 추가
   const fetchCustomers = async () => {
     try {
-      const { data, error } = await supabase
-        .from('w_customers')
-        .select('id, name, room_no, status, memo')
-        .eq('status', '입실');
+      const result = await fetchData('w_customers', {
+        select: 'id, name, room_no, status, memo',
+        filters: { status: '입실' }
+      });
         
-      if (error) {
+      if (!result.success) {
         return;
       }
-      
-      if (data) {
-        setCustomers(data);
+        
+      if (result.data) {
+        setCustomers(result.data);
       }
     } catch (err) {
       // 오류 발생 시 조용히 처리
@@ -499,52 +499,50 @@ export default function WStudioContent(props: WStudioContentProps) {
     }
   };
 
-  // 모든 변경사항 저장 함수
-  const saveAllChanges = useCallback(async () => {
-    if (dirtyFields.size === 0) return;
+  // 저장 함수
+  const saveChanges = async () => {
+    if (dirtyFields.size === 0) return true;
     
     try {
       setLoading(true);
       
-      // 변경된 항목만 서버에 저장
-      const updatedTransactions = Array.from(dirtyFields).map(id => 
-        transactions.find(t => t.id === id)
-      ).filter(Boolean);
-      
-      // 여기서 Supabase에 변경사항 저장
-      for (const transaction of updatedTransactions) {
+      // 변경된 거래만 추출
+      for (const id of Array.from(dirtyFields)) {
+        const transaction = transactions.find(t => t.id === id);
         if (!transaction) continue;
         
-        const { error } = await supabase
-          .from('wstudio')
-          .update({
+        const result = await updateData('wstudio', 
+          { id: transaction.id }, 
+          { 
             room: transaction.room,
             real_month: transaction.real_month,
             real_sales: transaction.real_sales
-          })
-          .eq('id', transaction.id);
-          
-        if (error) throw error;
+          }
+        );
+        
+        if (!result.success) {
+          throw new Error(`거래 ID ${id} 저장 중 오류: ${result.message}`);
+        }
       }
       
-      alert(`${dirtyFields.size}개의 변경사항이 저장되었습니다.`);
+      // 저장 성공 시 변경 사항 초기화
       setDirtyFields(new Set());
+      await fetchTransactions(); // 데이터 다시 로드
       return true;
     } catch (err: any) {
-      console.error('Error saving changes:', err);
-      alert(`저장 중 오류가 발생했습니다: ${err.message}`);
+      setError(err.message);
       return false;
     } finally {
       setLoading(false);
     }
-  }, [dirtyFields, transactions]);
+  };
 
   // 부모 컴포넌트에 저장 함수 전달
   useEffect(() => {
     if (onSaveFnChange) {
-      onSaveFnChange(saveAllChanges);
+      onSaveFnChange(saveChanges);
     }
-  }, [saveAllChanges, onSaveFnChange]);
+  }, [saveChanges, onSaveFnChange]);
 
   // 방번호별 입금액 표시 개선
   const renderRoomAmounts = () => {

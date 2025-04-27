@@ -1,9 +1,14 @@
 'use client';
 
-export default function SalesPage() {
+import PageLayout from '@/components/PageLayout';
+
+export default function ManagementPage() {
   return (
-    <div className="main">
-      <h1>매출관리</h1>
-    </div>
+    <PageLayout title="관리">
+      <div className="welcome-message">
+        <h2>관리 메뉴에 오신 것을 환영합니다</h2>
+        <p>왼쪽 사이드바에서 관리할 항목을 선택하세요.</p>
+      </div>
+    </PageLayout>
   );
 }
