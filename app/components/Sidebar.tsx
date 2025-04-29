@@ -12,8 +12,8 @@ export default function Sidebar() {
       items: [
         { href: '/management/sales', label: '매출 관리' },
         { href: '/management/purchases', label: '매입 관리' },
-        { href: '/management/expenses', label: '비용 관리' },
-        { href: '/management/others', label: '기타 거래 관리' },
+        { href: '/management/expenses', label: '고정 비용 관리' },
+        { href: '/management/others', label: '기타 비용 관리' },
         { href: '/management/wstudio', label: '스튜디오 매출 관리' },
         { href: '/management/w_customer', label: '스튜디오 고객 관리' },
       ]

@@ -225,7 +225,7 @@ export default function PurchasesContent({
     }
   }, [selectedYear, selectedMonth]);
 
-  // 필터링된 데이터 재계산 로직 추가
+  // 필터링된 데이터 재계산 로직 수정
   useEffect(() => {
     if (!purchases.length) return;
     
@@ -240,10 +240,21 @@ export default function PurchasesContent({
     
     setFilteredPurchasesByDate(byDate);
     
-    // 점포까지 함께 필터링
-    const forTable = byDate.filter(purchase => 
-      selectedStores.has(purchase.store_name)
-    );
+    // 점포까지 함께 필터링하고 정렬
+    const forTable = byDate
+      .filter(purchase => selectedStores.has(purchase.store_name))
+      .sort((a, b) => {
+        // 1. 점포별
+        if (a.store_name !== b.store_name) {
+          return a.store_name.localeCompare(b.store_name);
+        }
+        // 2. 거래처명
+        if (a.vendor_name !== b.vendor_name) {
+          return a.vendor_name.localeCompare(b.vendor_name);
+        }
+        // 3. 매입일자 역순
+        return new Date(b.purchase_date).getTime() - new Date(a.purchase_date).getTime();
+      });
     
     setFilteredPurchasesForTable(forTable);
   }, [purchases, selectedYear, selectedMonth, selectedStores]);
@@ -296,58 +307,77 @@ export default function PurchasesContent({
 
   // 삭제 버튼 클릭 핸들러
   const handleDeleteClick = async (id: number) => {
-    if (window.confirm('정말로 이 매입 내역을 삭제하시겠습니까?')) {
-      setLoading(true);
-      try {
-        console.log(`[PURCHASES] 매입 내역 삭제 시작: ID=${id}`);
-        const response = await deleteData('purchases', { id });
+    if (!id) {
+      console.error('[PURCHASES] 삭제 실패: 유효하지 않은 ID');
+      setError('삭제할 항목의 ID가 유효하지 않습니다.');
+      return;
+    }
 
-        if (!response.success) {
-          throw new Error('매입 내역 삭제 실패');
-        }
+    if (!window.confirm('정말로 이 매입 내역을 삭제하시겠습니까?')) return;
+    
+    if (loading) return;
+    
+    setLoading(true);
+    try {
+      console.log('[PURCHASES] 삭제 시도:', id);
+      const response = await deleteData('purchases', { id });
 
-        // 성공적으로 삭제 후 데이터 다시 가져오기
-        await fetchAllData();
-        alert('매입 내역이 삭제되었습니다.');
-      } catch (err: any) {
-        console.error('[PURCHASES] 매입 내역 삭제 오류:', err);
-        setError(err.message);
-        alert('삭제 중 오류가 발생했습니다.');
-      } finally {
-        setLoading(false);
+      if (!response.success) {
+        throw new Error('매입 내역 삭제 실패');
       }
+
+      setPurchases(prev => prev.filter(item => item.id !== id));
+      console.log('[PURCHASES] 삭제 성공:', id);
+    } catch (err: any) {
+      console.error('[PURCHASES] 매입 내역 삭제 오류:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   // 수정 폼 제출 처리
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (loading) return;
+    
     setLoading(true);
     
     try {
-      console.log(`[PURCHASES] 매입 내역 수정 시작: ID=${editingPurchase.id}`);
+      const updatedData = {
+        store_id: parseInt(editingPurchase.store_id),
+        vendor_id: parseInt(editingPurchase.vendor_id),
+        purchase_date: editingPurchase.purchase_date,
+        amount: parseInt(editingPurchase.amount.replace(/,/g, ''))
+      };
+      
       const response = await updateData('purchases', 
         { id: editingPurchase.id },
-        {
-          store_id: parseInt(editingPurchase.store_id),
-          vendor_id: parseInt(editingPurchase.vendor_id),
-          purchase_date: editingPurchase.purchase_date,
-          amount: parseInt(editingPurchase.amount.replace(/,/g, ''))
-        }
+        updatedData
       );
 
       if (!response.success) {
         throw new Error('매입 내역 수정 실패');
       }
 
-      // 성공적으로 업데이트 후 데이터 다시 가져오기
-      await fetchAllData();
+      setPurchases(prev => prev.map(item => {
+        if (item.id === editingPurchase.id) {
+          return {
+            ...item,
+            ...updatedData,
+            store_name: availableStores.find(s => s.store_id === updatedData.store_id)?.store_name || '알 수 없음',
+            vendor_name: vendors.find(v => v.id === updatedData.vendor_id)?.vendor_name || '알 수 없음',
+            updated_at: new Date().toISOString()
+          };
+        }
+        return item;
+      }));
+
       setIsEditModalOpen(false);
-      alert('매입 내역이 수정되었습니다.');
     } catch (err: any) {
       console.error('[PURCHASES] 매입 내역 수정 오류:', err);
       setError(err.message);
-      alert('수정 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
@@ -381,7 +411,10 @@ export default function PurchasesContent({
           </button>
           <button 
             className="btn btn-sm btn-delete"
-            onClick={() => handleDeleteClick(purchase.id)}
+            disabled={!purchase.id}
+            onClick={() => {
+              if (purchase.id) handleDeleteClick(purchase.id);
+            }}
           >
             삭제
           </button>
@@ -419,15 +452,16 @@ export default function PurchasesContent({
   // 새 항목 추가 폼 제출 처리
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (loading) return;
+    
     setLoading(true);
     
     try {
-      // 입력값 검증
       if (!newPurchase.store_id || !newPurchase.vendor_id || !newPurchase.purchase_date || !newPurchase.amount) {
         throw new Error('모든 필수 항목을 입력해주세요.');
       }
       
-      // 금액에서 콤마 제거 후 숫자로 변환
       const amountValue = parseInt(newPurchase.amount.replace(/,/g, ''));
       if (isNaN(amountValue)) {
         throw new Error('금액을 올바르게 입력해주세요.');
@@ -445,30 +479,36 @@ export default function PurchasesContent({
         throw new Error('매입 내역 추가 실패');
       }
       
-      // 성공적으로 추가 후 데이터 다시 가져오기
-      await fetchAllData();
+      const newPurchaseData: PurchaseData = {
+        id: response.data.id,
+        store_id: parseInt(newPurchase.store_id),
+        vendor_id: parseInt(newPurchase.vendor_id),
+        purchase_date: newPurchase.purchase_date,
+        amount: amountValue,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        store_name: availableStores.find(s => s.store_id === parseInt(newPurchase.store_id))?.store_name || '알 수 없음',
+        vendor_name: vendors.find(v => v.id === parseInt(newPurchase.vendor_id))?.vendor_name || '알 수 없음'
+      };
       
-      // 입력 폼 초기화 및 모달 닫기
+      setPurchases(prev => [newPurchaseData, ...prev]);
+      
       setNewPurchase({
-        store_id: newPurchase.store_id, // 마지막 선택한 점포는 유지
-        vendor_id: newPurchase.vendor_id, // 마지막 선택한 거래처도 유지
+        store_id: newPurchase.store_id,
+        vendor_id: newPurchase.vendor_id,
         purchase_date: new Date().toISOString().split('T')[0],
         amount: '0'
       });
       
-      // 마지막 입력 정보 저장 (다음 입력 시 편의성 제공)
       setLastInputInfo({
         store_id: newPurchase.store_id,
         vendor_id: newPurchase.vendor_id
       });
       
       setIsModalOpen(false);
-      
-      alert('새 매입 내역이 추가되었습니다.');
     } catch (err: any) {
       console.error('[PURCHASES] 매입 내역 추가 오류:', err);
       setError(err.message);
-      alert(`추가 중 오류가 발생했습니다: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -586,14 +626,14 @@ export default function PurchasesContent({
                   <label>점포명</label>
                   <select
                     value={newPurchase.store_id}
-                    onChange={(e) => setNewPurchase({...newPurchase, store_id: e.target.value})}
+                    onChange={(e) => setNewPurchase({...newPurchase, store_id: e.target.value, vendor_id: ''})}
                     required
                   >
-                    <option value="">선택하세요</option>
+                    <option key="default-store" value="">선택하세요</option>
                     {availableStores
                       .filter(store => [1001, 1003, 1004, 1005, 1100].includes(store.store_id))
                       .map(store => (
-                        <option key={store.store_id} value={store.store_id}>
+                        <option key={`new-store-${store.store_id}`} value={store.store_id}>
                           {store.store_name}
                         </option>
                       ))}
@@ -605,12 +645,16 @@ export default function PurchasesContent({
                     value={newPurchase.vendor_id}
                     onChange={(e) => setNewPurchase({...newPurchase, vendor_id: e.target.value})}
                     required
+                    disabled={!newPurchase.store_id}
                   >
-                    <option value="">선택하세요</option>
+                    <option key="default-vendor" value="">선택하세요</option>
                     {vendors
-                      .filter(vendor => !newPurchase.store_id || vendor.store_id === parseInt(newPurchase.store_id))
+                      .filter(vendor => 
+                        vendor.store_id === parseInt(newPurchase.store_id) && 
+                        vendor.category === '매입'
+                      )
                       .map(vendor => (
-                        <option key={vendor.id} value={vendor.id}>
+                        <option key={`new-vendor-${vendor.id}`} value={vendor.id}>
                           {vendor.vendor_name}
                         </option>
                       ))}
@@ -657,7 +701,7 @@ export default function PurchasesContent({
             className="year-select"
           >
             {years.map(year => (
-              <option key={year} value={year}>{year}년</option>
+              <option key={`year-${year}`} value={year}>{year}년</option>
             ))}
           </select>
         </div>
@@ -668,7 +712,7 @@ export default function PurchasesContent({
             className="month-select"
           >
             {months.map(month => (
-              <option key={month} value={month}>{month}월</option>
+              <option key={`month-${month}`} value={month}>{month}월</option>
             ))}
           </select>
         </div>
@@ -692,14 +736,14 @@ export default function PurchasesContent({
                     <span className="amount-label">총매입</span>
                     <span className="amount-value">{formatAmount(total)}원</span>
                   </div>
-                  {storeVendors.map(vendor => {
+                  {storeVendors.map((vendor, index) => {
                     const amount = vendorTotals[vendor.vendor_name] || 0;
                     return (
-                      <div key={vendor.id} className="amount-row vendor">
+                      <div key={`store-${store.store_id}-vendor-${vendor.id}`} className="amount-row vendor">
                         <span className="amount-label">{vendor.vendor_name}</span>
                         <span className="amount-value">{formatAmount(amount)}원</span>
                         {vendor.bank_account && (
-                          <span className="bank-account-container">
+                          <span key={`bank-${vendor.id}`} className="bank-account-container">
                             {vendor.bank_account}
                           </span>
                         )}
@@ -732,7 +776,9 @@ export default function PurchasesContent({
           </label>
         </div>
         <div className="store-toggles">
-          {availableStores.map(store => (
+          {availableStores
+            .filter(store => ![2001].includes(store.store_id))  // 더블유스튜디오(2001) 제외
+            .map(store => (
             <label key={store.store_id} className="checkbox-wrapper">
               <input
                 type="checkbox"
@@ -750,9 +796,9 @@ export default function PurchasesContent({
         <table className="data-table">
           <thead>
             <tr>
-              {Object.entries(columnMapping).map(([key, label]) => (
-                <th key={key} className={columnStyles[key as keyof typeof columnStyles]}>
-                  {label}
+              {Object.entries(columnMapping).map(([key, value]) => (
+                <th key={`header-col-${key}`} className={columnStyles[key as keyof typeof columnStyles]}>
+                  {value}
                 </th>
               ))}
             </tr>
@@ -765,10 +811,10 @@ export default function PurchasesContent({
                 </td>
               </tr>
             ) : (
-              filteredPurchasesForTable.map((purchase) => (
-                <tr key={purchase.id}>
+              filteredPurchasesForTable.map((purchase, index) => (
+                <tr key={`purchase-row-${purchase.id}-${index}`}>
                   {Object.keys(columnMapping).map((key) => (
-                    <td key={key} className={columnStyles[key as keyof typeof columnStyles]}>
+                    <td key={`cell-${purchase.id}-${key}`} className={columnStyles[key as keyof typeof columnStyles]}>
                       {getValue(purchase, key as keyof typeof columnMapping)}
                     </td>
                   ))}
@@ -798,14 +844,14 @@ export default function PurchasesContent({
                   <label>점포명</label>
                   <select
                     value={editingPurchase.store_id}
-                    onChange={(e) => setEditingPurchase({...editingPurchase, store_id: e.target.value})}
+                    onChange={(e) => setEditingPurchase({...editingPurchase, store_id: e.target.value, vendor_id: ''})}
                     required
                   >
-                    <option value="">선택하세요</option>
+                    <option key="edit-default-store" value="">선택하세요</option>
                     {availableStores
                       .filter(store => [1001, 1003, 1004, 1005, 1100].includes(store.store_id))
                       .map(store => (
-                        <option key={store.store_id} value={store.store_id}>
+                        <option key={`edit-store-${store.store_id}`} value={store.store_id}>
                           {store.store_name}
                         </option>
                       ))}
@@ -817,12 +863,16 @@ export default function PurchasesContent({
                     value={editingPurchase.vendor_id}
                     onChange={(e) => setEditingPurchase({...editingPurchase, vendor_id: e.target.value})}
                     required
+                    disabled={!editingPurchase.store_id}
                   >
-                    <option value="">선택하세요</option>
+                    <option key="edit-default-vendor" value="">선택하세요</option>
                     {vendors
-                      .filter(vendor => !editingPurchase.store_id || vendor.store_id === parseInt(editingPurchase.store_id))
+                      .filter(vendor => 
+                        vendor.store_id === parseInt(editingPurchase.store_id) && 
+                        vendor.category === '매입'
+                      )
                       .map(vendor => (
-                        <option key={vendor.id} value={vendor.id}>
+                        <option key={`edit-vendor-${vendor.id}`} value={vendor.id}>
                           {vendor.vendor_name}
                         </option>
                       ))}

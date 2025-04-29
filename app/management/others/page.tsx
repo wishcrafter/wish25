@@ -15,16 +15,6 @@ export default function OthersPage() {
   const [error, setError] = useState<string | null>(null);
   const [openModalFn, setOpenModalFn] = useState<(() => void) | null>(null);
   
-  // 기타 거래 등록 모달 버튼 렌더링
-  const ActionButtons = (
-    <button 
-      className="btn btn-primary"
-      onClick={() => openModalFn && openModalFn()}
-    >
-      기타 거래 등록
-    </button>
-  );
-
   // useCallback을 사용해 함수 참조 안정화
   const handleOpenModalFnChange = useCallback((fn: () => void) => {
     setOpenModalFn(() => fn);
@@ -32,10 +22,17 @@ export default function OthersPage() {
 
   return (
     <PageLayout 
-      title="기타 거래 관리"
+      title="기타 비용 관리"
       isLoading={loading}
       error={error}
-      actions={ActionButtons}
+      actions={
+        <button 
+          className="btn btn-primary"
+          onClick={() => openModalFn && openModalFn()}
+        >
+          기타 비용 등록
+        </button>
+      }
       className="others-page"
     >
       <OthersContent 

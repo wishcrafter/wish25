@@ -82,56 +82,76 @@ export default function OthersContent({
 
   // 삭제 버튼 클릭 시 호출
   const handleDeleteClick = async (id: number) => {
-    if (window.confirm('정말로 이 항목을 삭제하시겠습니까?')) {
-      setLoading(true);
-      try {
-        console.log(`[OTHERS] 거래 내역 삭제 시작: ID=${id}`);
-        const response = await deleteData('others', { id });
+    if (!window.confirm('정말로 이 기타 거래 내역을 삭제하시겠습니까?')) return;
+    
+    // 이미 처리 중이면 중복 실행 방지
+    if (loading) return;
+    
+    setLoading(true);
+    try {
+      console.log(`[OTHERS] 기타 거래 내역 삭제 시작: ID=${id}`);
+      const response = await deleteData('others', { id });
 
-        if (!response.success) {
-          throw new Error('거래 내역 삭제 실패');
-        }
-
-        // 성공적으로 삭제 후 데이터 새로고침
-        await fetchOthers();
-        alert('거래 내역이 삭제되었습니다.');
-      } catch (err: any) {
-        console.error('[OTHERS] 거래 내역 삭제 오류:', err);
-        setError(err.message);
-        alert('삭제 중 오류가 발생했습니다.');
-      } finally {
-        setLoading(false);
+      if (!response.success) {
+        throw new Error('기타 거래 내역 삭제 실패');
       }
+
+      // 로컬 상태에서 해당 항목 제거
+      setOthers(prev => prev.filter(item => item.id !== id));
+      alert('기타 거래 내역이 삭제되었습니다.');
+    } catch (err: any) {
+      console.error('[OTHERS] 기타 거래 내역 삭제 오류:', err);
+      setError(err.message);
+      alert('삭제 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
     }
   };
 
   // 수정 폼 제출 처리
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // 이미 제출 중이면 중복 제출 방지
+    if (loading) return;
+    
     setLoading(true);
     
     try {
-      console.log(`[OTHERS] 거래 내역 수정 시작: ID=${editingOther.id}`);
+      console.log(`[OTHERS] 기타 거래 내역 수정 시작: ID=${editingOther.id}`);
+      const updatedData = {
+        store_id: parseInt(editingOther.store_id),
+        date: editingOther.date,
+        amount: parseInt(editingOther.amount.replace(/,/g, '')),
+        details: editingOther.details || ''
+      };
+      
       const response = await updateData('others', 
         { id: editingOther.id },
-        {
-          store_id: parseInt(editingOther.store_id),
-          date: editingOther.date,
-          amount: parseInt(editingOther.amount.replace(/,/g, '')),
-          details: editingOther.details
-        }
+        updatedData
       );
 
       if (!response.success) {
-        throw new Error('거래 내역 수정 실패');
+        throw new Error('기타 거래 내역 수정 실패');
       }
 
-      // 성공적으로 업데이트 후 데이터 새로고침
-      await fetchOthers();
+      // 로컬 상태 업데이트
+      setOthers(prev => prev.map(item => {
+        if (item.id === editingOther.id) {
+          return {
+            ...item,
+            ...updatedData,
+            store_name: availableStores.find(s => s.store_id === updatedData.store_id)?.store_name || '알 수 없음',
+            updated_at: new Date().toISOString()
+          };
+        }
+        return item;
+      }));
+
       setIsEditModalOpen(false);
-      alert('거래 내역이 수정되었습니다.');
+      alert('기타 거래 내역이 수정되었습니다.');
     } catch (err: any) {
-      console.error('[OTHERS] 거래 내역 수정 오류:', err);
+      console.error('[OTHERS] 기타 거래 내역 수정 오류:', err);
       setError(err.message);
       alert('수정 중 오류가 발생했습니다.');
     } finally {
@@ -367,6 +387,10 @@ export default function OthersContent({
   // 새 항목 추가 폼 제출 처리
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // 이미 제출 중이면 중복 제출 방지
+    if (loading) return;
+    
     setLoading(true);
     
     try {
@@ -492,7 +516,7 @@ export default function OthersContent({
         <div className="modal-backdrop">
           <div className="modal-content">
             <div className="modal-header">
-              <h2>기타 거래 등록</h2>
+              <h2>기타 비용 등록</h2>
               <button
                 className="modal-close"
                 onClick={() => setIsModalOpen(false)}
@@ -587,30 +611,57 @@ export default function OthersContent({
       </div>
 
       <div className="store-summary">
-        <h2 className="summary-title">점포별 기타거래 현황</h2>
-        {/* 모든 점포에 대해 카드 생성 (거래가 없어도 카드가 보이도록) */}
+        <h2 className="summary-title">점포별 기타 비용 현황</h2>
         <div className="summary-grid">
-          {availableStores
-            .map(store => {
-              const { total, count } = calculateStoreTotals(store);
-              return (
-                <div key={store.store_id} className="store-total-card small-card">
-                  <div className="store-name">{store.store_name}</div>
-                  <div className="store-details">
-                    <div className="amount-row">
-                      <span className="amount-label">총 거래금액</span>
-                      <span className="amount-value">{formatAmount(total)}원</span>
-                    </div>
-                    <div className="amount-row transactions">
-                      <span className="amount-label">거래건수</span>
-                      <span className="amount-value">
-                        {count}건
-                      </span>
+          <div className="grid-row">
+            {/* 첫 번째 줄: 1001, 1003, 1004, 1005, 1100 */}
+            {availableStores
+              .filter(store => [1001, 1003, 1004, 1005, 1100].includes(store.store_id))
+              .sort((a, b) => a.store_id - b.store_id)
+              .map(store => {
+                const { total, count } = calculateStoreTotals(store);
+                return (
+                  <div key={store.store_id} className="store-total-card small-card">
+                    <div className="store-name">{store.store_name}</div>
+                    <div className="store-details">
+                      <div className="amount-row">
+                        <span className="amount-label">총 비용</span>
+                        <span className="amount-value">{formatAmount(total)}원</span>
+                      </div>
+                      <div className="amount-row transactions">
+                        <span className="amount-label">건수</span>
+                        <span className="amount-value">{count}건</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+          </div>
+
+          <div className="grid-row">
+            {/* 두 번째 줄: 2001, 3001, 9001 */}
+            {availableStores
+              .filter(store => [2001, 3001, 9001].includes(store.store_id))
+              .sort((a, b) => a.store_id - b.store_id)
+              .map(store => {
+                const { total, count } = calculateStoreTotals(store);
+                return (
+                  <div key={store.store_id} className="store-total-card small-card">
+                    <div className="store-name">{store.store_name}</div>
+                    <div className="store-details">
+                      <div className="amount-row">
+                        <span className="amount-label">총 비용</span>
+                        <span className="amount-value">{formatAmount(total)}원</span>
+                      </div>
+                      <div className="amount-row transactions">
+                        <span className="amount-label">건수</span>
+                        <span className="amount-value">{count}건</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
         </div>
       </div>
 
@@ -679,7 +730,7 @@ export default function OthersContent({
         <div className="modal-backdrop">
           <div className="modal-content">
             <div className="modal-header">
-              <h2>기타 거래 수정</h2>
+              <h2>기타 비용 수정</h2>
               <button
                 className="modal-close"
                 onClick={() => setIsEditModalOpen(false)}
@@ -747,6 +798,25 @@ export default function OthersContent({
           </div>
         </div>
       )}
+
+      <style jsx>{`
+        .summary-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+        .grid-row {
+          display: flex;
+          gap: 1rem;
+        }
+        .grid-row:first-child {
+          margin-bottom: 1rem;
+        }
+        .store-total-card {
+          min-width: 200px;
+          width: 200px;
+        }
+      `}</style>
     </div>
   );
 } 

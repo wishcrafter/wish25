@@ -44,7 +44,7 @@ export default function ExpensesPage() {
 
   return (
     <PageLayout 
-      title="비용 관리"
+      title="고정 비용 관리"
       isLoading={loading}
       error={error}
       actions={ActionButtons}
