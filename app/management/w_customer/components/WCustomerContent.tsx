@@ -180,11 +180,11 @@ export default function WCustomerContent({ statusFilter, onCustomerCreated, onLo
   };
 
   // 고객 정보 업데이트 핸들러
-  const handleCustomerUpdate = async (updatedCustomer: CustomerData) => {
+  const handleCustomerUpdate = async (updatedCustomer: CustomerData): Promise<boolean> => {
     try {
       const result = await updateData('w_customers', 
-        updatedCustomer, 
-        { id: updatedCustomer.id }
+        { id: updatedCustomer.id },  // 필터로 수정할 고객의 ID 사용
+        updatedCustomer
       );
 
       if (!result.success) {
