@@ -56,18 +56,18 @@ const fullColumnMapping: { [key: string]: string } = {
 // 컬럼별 스타일 매핑
 const columnStyles: { [key: string]: string } = {
   room_no: 'col-number text-center',
-  name: 'col-name',
-  deposit: 'col-price',
-  monthly_fee: 'col-price',
-  first_fee: 'col-price',
-  move_in_date: 'col-date',
-  move_out_date: 'col-date',
-  status: 'col-status',
-  memo: 'col-text',
-  phone: 'col-text',
-  phone_sub: 'col-text',
-  resident_id: 'col-text',
-  address: 'col-text'
+  name: 'col-text text-center',
+  deposit: 'col-number text-right',
+  monthly_fee: 'col-number text-right',
+  first_fee: 'col-number text-right',
+  move_in_date: 'col-date text-center',
+  move_out_date: 'col-date text-center',
+  status: 'col-status text-center',
+  memo: 'col-text text-center',
+  phone: 'col-text text-center',
+  phone_sub: 'col-text text-center',
+  resident_id: 'col-text text-center',
+  address: 'col-text text-center'
 };
 
 export default function WCustomerContent({ statusFilter, onCustomerCreated, onLoadingChange, onErrorChange }: WCustomerContentProps) {

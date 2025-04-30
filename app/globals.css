@@ -261,6 +261,7 @@ body {
   color: #334155;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-align: center;
 }
 
 .data-table tr {
@@ -300,8 +301,9 @@ body {
   color: #334155;
 }
 
-/* 숫자 데이터 컬럼 */
-.data-table .col-number {
+/* 숫자 데이터 컬럼 - 오른쪽 정렬 유지 */
+.data-table .col-number,
+.data-table th.col-number {
   text-align: right;
   font-feature-settings: "tnum";
   font-variant-numeric: tabular-nums;
@@ -312,9 +314,20 @@ body {
   text-align: right;
 }
 
+/* 금액 컬럼 - 오른쪽 정렬 */
+.data-table .col-price,
+.data-table th.col-price,
+.data-table td.col-price {
+  text-align: right;
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
+  color: #334155;
+}
+
 /* 텍스트 데이터 컬럼 (가운데 정렬) */
 .data-table .col-text,
-.data-table td.col-text {
+.data-table td.col-text,
+.data-table th.col-text {
   text-align: center;
   color: #334155;
 }
