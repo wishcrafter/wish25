@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { supabase } from '@/utils/supabase';
-import { CustomerData } from '@/types/types';
+import { CustomerData, NewCustomerInput } from '@/types/types';
 
 interface CustomerRegisterModalProps {
   onClose: () => void;
@@ -13,7 +13,7 @@ export default function CustomerRegisterModal({
   onClose,
   onCustomerCreated
 }: CustomerRegisterModalProps) {
-  const [newCustomer, setNewCustomer] = useState<CustomerData>({
+  const [newCustomer, setNewCustomer] = useState<NewCustomerInput>({
     room_no: 0,
     name: '',
     deposit: 0,
@@ -32,7 +32,7 @@ export default function CustomerRegisterModal({
   const [error, setError] = useState<string | null>(null);
 
   // 입력 필드 변경 핸들러
-  const handleInputChange = (key: keyof CustomerData, value: any) => {
+  const handleInputChange = (key: keyof NewCustomerInput, value: any) => {
     setNewCustomer(prev => ({
       ...prev,
       [key]: value
@@ -40,7 +40,7 @@ export default function CustomerRegisterModal({
   };
 
   // 숫자 입력 핸들러 (금액)
-  const handleNumberChange = (key: keyof CustomerData, value: string) => {
+  const handleNumberChange = (key: keyof NewCustomerInput, value: string) => {
     const numValue = value === '' ? 0 : parseInt(value.replace(/[^0-9]/g, ''), 10);
     handleInputChange(key, numValue);
   };
@@ -66,6 +66,7 @@ export default function CustomerRegisterModal({
       
       // 성공 시 콜백 호출 및 모달 닫기
       onCustomerCreated();
+      onClose();
     } catch (err: any) {
       console.error('고객 등록 중 오류 발생:', err);
       setError(err.message);

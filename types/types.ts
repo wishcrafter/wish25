@@ -1,21 +1,21 @@
 // 고객 데이터 인터페이스
 export interface CustomerData {
-  id: string;               // UUID
-  room_no: number | null;   // 방 번호
-  name: string;            // 고객명
-  deposit: number;         // 보증금
-  monthly_fee: number;     // 월세
-  first_fee: number;       // 초기 비용
-  move_in_date: string | null;   // 입실일
-  move_out_date: string | null;  // 퇴실일
-  status: string;          // 상태 (입실/퇴실)
-  memo: string | null;     // 메모
-  resident_id: string | null;    // 주민번호
-  phone: string | null;    // 연락처
-  phone_sub: string | null;      // 보조 연락처
-  address: string | null;  // 주소
-  created_at: string;     // 생성일
-  updated_at: string;     // 수정일
+  id: number;
+  created_at: string;
+  updated_at: string;
+  room_no: number;
+  name: string;
+  deposit: number;
+  monthly_fee: number;
+  first_fee: number;
+  move_in_date: string | null;
+  move_out_date: string | null;
+  status: string;
+  memo: string;
+  resident_id: string;
+  phone: string;
+  phone_sub: string;
+  address: string;
 }
 
 // 고객 생성/수정 시 사용하는 폼 데이터 인터페이스
@@ -42,4 +42,10 @@ export interface CustomerColumn {
   width?: number;
   align?: 'left' | 'center' | 'right';
   format?: (value: any) => string | number;
-} 
+}
+
+// 생성 전용 타입 정의
+export type NewCustomerInput = Omit<
+  CustomerData,
+  'id' | 'created_at' | 'updated_at'
+>; 

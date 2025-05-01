@@ -1,14 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { CustomerData } from '@/types/types';
+import { CustomerData, NewCustomerInput } from '@/types/types';
 
 interface CustomerRegistrationModalProps {
   onClose: () => void;
-  onSave: (customer: Omit<CustomerData, 'id' | 'created_at' | 'updated_at'>) => Promise<boolean>;
+  onSave: (customer: NewCustomerInput) => Promise<boolean>;
 }
 
-const initialCustomerData: Omit<CustomerData, 'id' | 'created_at' | 'updated_at'> = {
+const initialCustomerData: NewCustomerInput = {
   room_no: 0,
   name: '',
   deposit: 0,
@@ -25,11 +25,11 @@ const initialCustomerData: Omit<CustomerData, 'id' | 'created_at' | 'updated_at'
 };
 
 export default function CustomerRegistrationModal({ onClose, onSave }: CustomerRegistrationModalProps) {
-  const [customerData, setCustomerData] = useState(initialCustomerData);
+  const [customerData, setCustomerData] = useState<NewCustomerInput>(initialCustomerData);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleInputChange = (field: keyof typeof customerData, value: any) => {
+  const handleInputChange = (field: keyof NewCustomerInput, value: any) => {
     setCustomerData(prev => ({
       ...prev,
       [field]: value

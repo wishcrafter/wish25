@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/utils/supabase';
-import { CustomerData } from '@/types/types';
+import { CustomerData, NewCustomerInput } from '@/types/types';
 import CreateCustomerTable from './CreateCustomerTable';
 import DirectSQL from './DirectSQL';
 import CustomerDetailModal from './CustomerDetailModal';
