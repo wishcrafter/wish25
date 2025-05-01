@@ -1,12 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '../../../../utils/supabase';
 
 export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  context: { params: { id: string } }
 ) {
   try {
-    const customerId = parseInt(params.id);
+    const customerId = parseInt(context.params.id);
     const updatedData = await request.json();
 
     const { data, error } = await supabase
