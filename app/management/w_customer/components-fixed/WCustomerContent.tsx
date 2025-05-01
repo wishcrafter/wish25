@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Dispatch, SetStateAction } from 'react';
 import { supabase } from '@/utils/supabase';
 import { CustomerData, NewCustomerInput } from '@/types/types';
 import CreateCustomerTable from './CreateCustomerTable';
@@ -10,8 +10,8 @@ import CustomerDetailModal from './CustomerDetailModal';
 interface WCustomerContentProps {
   statusFilter: string;
   onCustomerCreated: () => void;
-  onLoadingChange?: (isLoading: boolean) => void;
-  onErrorChange?: (error: string | null) => void;
+  onLoadingChange: Dispatch<SetStateAction<boolean>>;
+  onErrorChange: Dispatch<SetStateAction<string | null>>;
 }
 
 const columnMapping: { [key: string]: string } = {
