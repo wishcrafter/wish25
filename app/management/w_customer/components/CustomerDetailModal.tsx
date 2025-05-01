@@ -1,251 +1,149 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { CustomerData } from '@/types/types';
 
 interface CustomerDetailModalProps {
   customer: CustomerData;
   onClose: () => void;
-  onSave: (customer: CustomerData) => Promise<boolean>;
+  onSave: (updatedCustomer: CustomerData) => void;
+  columnMapping: { [key: string]: string };
+  columnStyles: { [key: string]: string };
+  formatPrice: (price: number) => string;
+  formatDate: (dateString: string | null) => string;
+  getStatusClass: (status: string) => string;
 }
 
-export default function CustomerDetailModal({ customer, onClose, onSave }: CustomerDetailModalProps) {
-  const [editedCustomer, setEditedCustomer] = useState<CustomerData>(customer);
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export default function CustomerDetailModal({
+  customer,
+  onClose,
+  onSave,
+  columnMapping,
+  columnStyles,
+  formatPrice,
+  formatDate,
+  getStatusClass
+}: CustomerDetailModalProps) {
+  const [editedCustomer, setEditedCustomer] = useState<CustomerData>({...customer});
+  const [isEditing, setIsEditing] = useState(false);
 
-  useEffect(() => {
-    setEditedCustomer(customer);
-  }, [customer]);
+  // 수정 모드 토글
+  const toggleEditMode = () => {
+    setIsEditing(!isEditing);
+  };
 
-  const handleInputChange = (field: keyof CustomerData, value: any) => {
+  // 입력 필드 변경 핸들러
+  const handleInputChange = (key: keyof CustomerData, value: any) => {
     setEditedCustomer(prev => ({
       ...prev,
-      [field]: value
+      [key]: value
     }));
   };
 
-  const handleSave = async () => {
-    setIsSaving(true);
-    setError(null);
-    
-    try {
-      const success = await onSave(editedCustomer);
-      if (success) {
-        onClose();
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '저장 중 오류가 발생했습니다.');
-    } finally {
-      setIsSaving(false);
-    }
+  // 숫자 입력 핸들러 (금액)
+  const handleNumberChange = (key: keyof CustomerData, value: string) => {
+    const numValue = value === '' ? 0 : parseInt(value.replace(/[^0-9]/g, ''), 10);
+    handleInputChange(key, numValue);
+  };
+
+  // 폼 제출 핸들러
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave(editedCustomer);
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg w-[800px] max-h-[90vh] flex flex-col">
-        <div className="p-4 flex justify-between items-center border-b">
-          <h2 className="text-lg font-medium">고객 상세 정보</h2>
-          <button 
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            ✕
-          </button>
+    <div className="modal-backdrop">
+      <div className="modal-content">
+        <div className="modal-header">
+          <h2>고객 {isEditing ? '정보 수정' : '상세 정보'}</h2>
+          <button className="modal-close" onClick={onClose}>×</button>
         </div>
-
-        <div className="p-6 flex-1 overflow-y-auto">
-          <div className="grid grid-cols-2 gap-6">
-            {/* 좌측 열 - 데이터 테이블 표시 항목 */}
-            <div className="space-y-4">
-              <div className="flex items-center">
-                <label className="w-24 text-right text-sm text-gray-600">호실</label>
-                <div className="flex-1 ml-4">
-                  <input
-                    type="number"
-                    value={editedCustomer.room_no || ''}
-                    onChange={(e) => handleInputChange('room_no', e.target.value ? parseInt(e.target.value) : 0)}
-                    className="w-full h-9 px-3 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
+        
+        <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">방 번호</label>
+                <div className="mt-1 text-sm text-gray-900">{customer.room_no}</div>
               </div>
-
-              <div className="flex items-center">
-                <label className="w-24 text-right text-sm text-gray-600">이름</label>
-                <div className="flex-1 ml-4">
-                  <input
-                    type="text"
-                    value={editedCustomer.name}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
-                    className="w-full h-9 px-3 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">고객명</label>
+                <div className="mt-1 text-sm text-gray-900">{customer.name}</div>
               </div>
-
-              <div className="flex items-center">
-                <label className="w-24 text-right text-sm text-gray-600">보증금</label>
-                <div className="flex-1 ml-4">
-                  <input
-                    type="number"
-                    value={editedCustomer.deposit || ''}
-                    onChange={(e) => handleInputChange('deposit', e.target.value ? parseInt(e.target.value) : 0)}
-                    className="w-full h-9 px-3 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">보증금</label>
+                <div className="mt-1 text-sm text-gray-900">{formatPrice(customer.deposit)}원</div>
               </div>
-
-              <div className="flex items-center">
-                <label className="w-24 text-right text-sm text-gray-600">월세</label>
-                <div className="flex-1 ml-4">
-                  <input
-                    type="number"
-                    value={editedCustomer.monthly_fee || ''}
-                    onChange={(e) => handleInputChange('monthly_fee', e.target.value ? parseInt(e.target.value) : 0)}
-                    className="w-full h-9 px-3 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center">
-                <label className="w-24 text-right text-sm text-gray-600">입실일</label>
-                <div className="flex-1 ml-4">
-                  <input
-                    type="date"
-                    value={editedCustomer.move_in_date || ''}
-                    onChange={(e) => handleInputChange('move_in_date', e.target.value)}
-                    className="w-full h-9 px-3 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center">
-                <label className="w-24 text-right text-sm text-gray-600">퇴실일</label>
-                <div className="flex-1 ml-4">
-                  <input
-                    type="date"
-                    value={editedCustomer.move_out_date || ''}
-                    onChange={(e) => handleInputChange('move_out_date', e.target.value)}
-                    className="w-full h-9 px-3 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center">
-                <label className="w-24 text-right text-sm text-gray-600">상태</label>
-                <div className="flex-1 ml-4">
-                  <select
-                    value={editedCustomer.status}
-                    onChange={(e) => handleInputChange('status', e.target.value)}
-                    className="w-full h-9 px-3 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  >
-                    <option value="">선택</option>
-                    <option value="입실">입실</option>
-                    <option value="퇴실">퇴실</option>
-                    <option value="계약">계약</option>
-                  </select>
-                </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">월 이용료</label>
+                <div className="mt-1 text-sm text-gray-900">{formatPrice(customer.monthly_fee)}원</div>
               </div>
             </div>
-
-            {/* 우측 열 - 나머지 항목 */}
-            <div className="space-y-4">
-              <div className="flex items-center">
-                <label className="w-24 text-right text-sm text-gray-600">선납금</label>
-                <div className="flex-1 ml-4">
-                  <input
-                    type="number"
-                    value={editedCustomer.first_fee || ''}
-                    onChange={(e) => handleInputChange('first_fee', e.target.value ? parseInt(e.target.value) : 0)}
-                    className="w-full h-9 px-3 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
+            <div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">입주일</label>
+                <div className="mt-1 text-sm text-gray-900">{formatDate(customer.move_in_date)}</div>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">퇴실일</label>
+                <div className="mt-1 text-sm text-gray-900">{formatDate(customer.move_out_date)}</div>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">상태</label>
+                <div className="mt-1">
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(customer.status)}`}>
+                    {customer.status}
+                  </span>
                 </div>
               </div>
-
-              <div className="flex items-center">
-                <label className="w-24 text-right text-sm text-gray-600">주민번호</label>
-                <div className="flex-1 ml-4">
-                  <input
-                    type="text"
-                    value={editedCustomer.resident_id}
-                    onChange={(e) => handleInputChange('resident_id', e.target.value)}
-                    className="w-full h-9 px-3 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center">
-                <label className="w-24 text-right text-sm text-gray-600">연락처</label>
-                <div className="flex-1 ml-4">
-                  <input
-                    type="text"
-                    value={editedCustomer.phone}
-                    onChange={(e) => handleInputChange('phone', e.target.value)}
-                    className="w-full h-9 px-3 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center">
-                <label className="w-24 text-right text-sm text-gray-600">비상연락처</label>
-                <div className="flex-1 ml-4">
-                  <input
-                    type="text"
-                    value={editedCustomer.phone_sub}
-                    onChange={(e) => handleInputChange('phone_sub', e.target.value)}
-                    className="w-full h-9 px-3 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center">
-                <label className="w-24 text-right text-sm text-gray-600">주소</label>
-                <div className="flex-1 ml-4">
-                  <input
-                    type="text"
-                    value={editedCustomer.address}
-                    onChange={(e) => handleInputChange('address', e.target.value)}
-                    className="w-full h-9 px-3 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">메모</label>
+                <div className="mt-1 text-sm text-gray-900">{customer.memo || '-'}</div>
               </div>
             </div>
           </div>
-
-          {/* 메모 필드 */}
-          <div className="mt-6">
-            <div className="flex items-start">
-              <label className="w-24 text-right text-sm text-gray-600 mt-2">메모</label>
-              <div className="flex-1 ml-4">
-                <textarea
-                  value={editedCustomer.memo}
-                  onChange={(e) => handleInputChange('memo', e.target.value)}
-                  className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 min-h-[100px] resize-none"
-                />
-              </div>
-            </div>
-          </div>
-
-          {error && (
-            <div className="mt-4 text-center text-red-600 text-sm">
-              {error}
-            </div>
+        </div>
+        
+        <div className="modal-footer">
+          {isEditing ? (
+            <>
+              <button 
+                type="button" 
+                className="btn btn-secondary"
+                onClick={() => {
+                  setEditedCustomer({...customer});
+                  setIsEditing(false);
+                }}
+              >
+                취소
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-primary"
+                onClick={handleSubmit}
+              >
+                저장
+              </button>
+            </>
+          ) : (
+            <>
+              <button 
+                type="button" 
+                className="btn btn-secondary"
+                onClick={onClose}
+              >
+                닫기
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-primary"
+                onClick={toggleEditMode}
+              >
+                수정하기
+              </button>
+            </>
           )}
-        </div>
-
-        <div className="p-4 flex justify-end space-x-2 border-t">
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="px-4 h-9 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-blue-300 disabled:cursor-not-allowed"
-          >
-            {isSaving ? '저장 중...' : '저장'}
-          </button>
-          <button
-            onClick={onClose}
-            className="px-4 h-9 border border-gray-300 rounded hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            취소
-          </button>
         </div>
       </div>
     </div>

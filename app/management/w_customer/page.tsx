@@ -1,9 +1,9 @@
 'use client';
 
-import WCustomerContent from './components-fixed/WCustomerContent';
+import WCustomerContent from './components/WCustomerContent';
 import PageLayout from '@/app/components/PageLayout';
 import { useState } from 'react';
-import CustomerRegisterModal from './components-fixed/CustomerRegisterModal';
+import CustomerRegisterModal from './components/CustomerRegisterModal';
 
 export default function WCustomerPage() {
   const [statusFilter, setStatusFilter] = useState<string>('입실');

@@ -1,39 +1,33 @@
 'use client';
 
 import { useState } from 'react';
-import { callCustomFunction } from '../../../../utils/supabase-client-api';
+import { supabase } from '@/utils/supabase';
 
 interface CreateCustomerTableProps {
-  onClose?: () => void;
-  onTableCreated?: () => void;
+  onClose: () => void;
+  onTableCreated: () => void;
 }
 
-export default function CreateCustomerTable({ onClose, onTableCreated }: CreateCustomerTableProps) {
+export default function CreateCustomerTable({
+  onClose,
+  onTableCreated
+}: CreateCustomerTableProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
 
-  const createTable = async () => {
+  const handleCreateTable = async () => {
+    setLoading(true);
+    setError(null);
+
     try {
-      setLoading(true);
-      setError(null);
-      setSuccess(false);
-
-      // 함수 호출을 통해 테이블 생성
-      const result = await callCustomFunction('create_w_customers_table');
-
-      if (!result.success) {
-        throw new Error(result.message || '테이블 생성 중 오류가 발생했습니다.');
-      }
-
-      setSuccess(true);
+      // 테이블 생성 SQL 실행
+      const { error } = await supabase.rpc('create_w_customers_table');
       
-      // 성공 시 콜백 호출
-      if (onTableCreated) {
-        onTableCreated();
-      }
+      if (error) throw error;
+
+      onTableCreated();
+      onClose();
     } catch (err: any) {
-      console.error('테이블 생성 중 오류 발생:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -41,37 +35,36 @@ export default function CreateCustomerTable({ onClose, onTableCreated }: CreateC
   };
 
   return (
-    <div className="create-table-container">
-      <h3>W스튜디오 고객 테이블 생성</h3>
-      <p>이 기능은 Supabase에 'w_customers' 테이블을 자동으로 생성합니다.</p>
-      
-      {success && (
-        <div className="success-message">
-          <p>테이블이 성공적으로 생성되었습니다. 페이지를 새로고침하면 데이터를 확인할 수 있습니다.</p>
-          <button 
-            className="btn btn-primary"
-            onClick={() => onClose ? onClose() : window.location.reload()}
-          >
-            페이지 새로고침
-          </button>
-        </div>
-      )}
+    <div className="create-table-modal">
+      <h2>w_customers 테이블 생성</h2>
+      <p>
+        고정비 관리를 위한 테이블을 생성하시겠습니까?
+        <br />
+        (기존 테이블이 있다면 삭제됩니다)
+      </p>
       
       {error && (
         <div className="error-message">
-          <p>테이블 생성 중 오류가 발생했습니다:</p>
-          <code>{error}</code>
-          <p>Supabase 대시보드에서 수동으로 테이블을 생성해야 할 수 있습니다.</p>
+          {error}
         </div>
       )}
       
-      <button 
-        className="btn btn-primary"
-        onClick={createTable}
-        disabled={loading || success}
-      >
-        {loading ? '생성 중...' : '테이블 자동 생성'}
-      </button>
+      <div className="button-group">
+        <button 
+          onClick={handleCreateTable}
+          disabled={loading}
+          className="btn-primary"
+        >
+          {loading ? '생성 중...' : '테이블 생성'}
+        </button>
+        <button 
+          onClick={onClose}
+          disabled={loading}
+          className="btn-secondary"
+        >
+          취소
+        </button>
+      </div>
     </div>
   );
 } 

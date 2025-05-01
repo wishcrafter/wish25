@@ -1,23 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { insertData } from '../../../../utils/supabase-client-api';
-
-interface CustomerData {
-  room_no: number;
-  name: string;
-  deposit: number;
-  monthly_fee: number;
-  first_fee: number;
-  move_in_date: string | null;
-  move_out_date: string | null;
-  status: string;
-  memo: string;
-  resident_id: string;
-  phone: string;
-  phone_sub: string;
-  address: string;
-}
+import { supabase } from '@/utils/supabase';
+import { CustomerData, NewCustomerInput } from '@/types/types';
 
 interface CustomerRegisterModalProps {
   onClose: () => void;
@@ -28,7 +13,7 @@ export default function CustomerRegisterModal({
   onClose,
   onCustomerCreated
 }: CustomerRegisterModalProps) {
-  const [newCustomer, setNewCustomer] = useState<CustomerData>({
+  const [newCustomer, setNewCustomer] = useState<NewCustomerInput>({
     room_no: 0,
     name: '',
     deposit: 0,
@@ -47,7 +32,7 @@ export default function CustomerRegisterModal({
   const [error, setError] = useState<string | null>(null);
 
   // 입력 필드 변경 핸들러
-  const handleInputChange = (key: keyof CustomerData, value: any) => {
+  const handleInputChange = (key: keyof NewCustomerInput, value: any) => {
     setNewCustomer(prev => ({
       ...prev,
       [key]: value
@@ -55,7 +40,7 @@ export default function CustomerRegisterModal({
   };
 
   // 숫자 입력 핸들러 (금액)
-  const handleNumberChange = (key: keyof CustomerData, value: string) => {
+  const handleNumberChange = (key: keyof NewCustomerInput, value: string) => {
     const numValue = value === '' ? 0 : parseInt(value.replace(/[^0-9]/g, ''), 10);
     handleInputChange(key, numValue);
   };
@@ -69,9 +54,15 @@ export default function CustomerRegisterModal({
       setError(null);
       
       // Supabase에 새 고객 데이터 추가
-      const result = await insertData('w_customers', newCustomer);
+      const { error: insertError } = await supabase
+        .from('w_customers')
+        .insert([{
+          ...newCustomer,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }]);
       
-      if (!result.success) throw new Error(result.message);
+      if (insertError) throw insertError;
       
       // 성공 시 콜백 호출 및 모달 닫기
       onCustomerCreated();
@@ -84,202 +75,179 @@ export default function CustomerRegisterModal({
     }
   };
 
-  // 좌우 컬럼으로 필드 분리
-  const leftColumnFields = ['room_no', 'name', 'deposit', 'monthly_fee', 'first_fee', 'status'];
-  const rightColumnFields = ['move_in_date', 'move_out_date', 'phone', 'phone_sub', 'resident_id', 'address', 'memo'];
-
   return (
-    <div className="modal-backdrop">
-      <div className="modal-content" style={{ width: '800px', maxWidth: '95vw' }}>
+    <div className="modal-overlay">
+      <div className="modal-content register-modal">
         <div className="modal-header">
-          <h2>새 고객 등록</h2>
-          <button className="modal-close" onClick={onClose}>×</button>
+          <h3>새 고객 등록</h3>
+          <button 
+            className="modal-close"
+            onClick={onClose}
+          >
+            ×
+          </button>
         </div>
         
-        <div className="modal-body">
-          {error && (
-            <div className="error-message" style={{ marginBottom: '15px' }}>
-              {error}
+        <form className="register-form" onSubmit={handleSubmit}>
+          <div className="form-grid">
+            <div className="form-group">
+              <label htmlFor="room_no">방 번호</label>
+              <input
+                type="number"
+                id="room_no"
+                value={newCustomer.room_no}
+                onChange={e => handleInputChange('room_no', parseInt(e.target.value, 10))}
+                required
+              />
             </div>
+            
+            <div className="form-group">
+              <label htmlFor="name">고객명</label>
+              <input
+                type="text"
+                id="name"
+                value={newCustomer.name}
+                onChange={e => handleInputChange('name', e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="status">상태</label>
+              <select
+                id="status"
+                value={newCustomer.status}
+                onChange={e => handleInputChange('status', e.target.value)}
+              >
+                <option value="입실">입실</option>
+                <option value="퇴실">퇴실</option>
+                <option value="예약">예약</option>
+              </select>
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="deposit">보증금</label>
+              <input
+                type="text"
+                id="deposit"
+                value={newCustomer.deposit.toLocaleString()}
+                onChange={e => handleNumberChange('deposit', e.target.value)}
+              />
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="monthly_fee">월 이용료</label>
+              <input
+                type="text"
+                id="monthly_fee"
+                value={newCustomer.monthly_fee.toLocaleString()}
+                onChange={e => handleNumberChange('monthly_fee', e.target.value)}
+              />
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="first_fee">초기 비용</label>
+              <input
+                type="text"
+                id="first_fee"
+                value={newCustomer.first_fee.toLocaleString()}
+                onChange={e => handleNumberChange('first_fee', e.target.value)}
+              />
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="move_in_date">입주일</label>
+              <input
+                type="date"
+                id="move_in_date"
+                value={newCustomer.move_in_date || ''}
+                onChange={e => handleInputChange('move_in_date', e.target.value)}
+              />
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="move_out_date">퇴실일</label>
+              <input
+                type="date"
+                id="move_out_date"
+                value={newCustomer.move_out_date || ''}
+                onChange={e => handleInputChange('move_out_date', e.target.value)}
+              />
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="phone">연락처</label>
+              <input
+                type="text"
+                id="phone"
+                value={newCustomer.phone}
+                onChange={e => handleInputChange('phone', e.target.value)}
+              />
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="phone_sub">추가 연락처</label>
+              <input
+                type="text"
+                id="phone_sub"
+                value={newCustomer.phone_sub}
+                onChange={e => handleInputChange('phone_sub', e.target.value)}
+              />
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="resident_id">주민등록번호</label>
+              <input
+                type="text"
+                id="resident_id"
+                value={newCustomer.resident_id}
+                onChange={e => handleInputChange('resident_id', e.target.value)}
+              />
+            </div>
+            
+            <div className="form-group full-width">
+              <label htmlFor="address">주소</label>
+              <input
+                type="text"
+                id="address"
+                value={newCustomer.address}
+                onChange={e => handleInputChange('address', e.target.value)}
+              />
+            </div>
+            
+            <div className="form-group full-width">
+              <label htmlFor="memo">메모</label>
+              <textarea
+                id="memo"
+                value={newCustomer.memo}
+                onChange={e => handleInputChange('memo', e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+          
+          {error && (
+            <div className="error-message">{error}</div>
           )}
           
-          <form onSubmit={handleSubmit}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
-              <div style={{ flex: '1 1 45%' }}>
-                {/* 왼쪽 컬럼 필드 */}
-                <div className="form-group">
-                  <label htmlFor="room_no">방 번호</label>
-                  <input
-                    type="number"
-                    id="room_no"
-                    value={newCustomer.room_no || ''}
-                    onChange={(e) => handleNumberChange('room_no', e.target.value)}
-                    className="form-input"
-                    required
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label htmlFor="name">고객명</label>
-                  <input
-                    type="text"
-                    id="name"
-                    value={newCustomer.name}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
-                    className="form-input"
-                    required
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label htmlFor="deposit">보증금</label>
-                  <input
-                    type="text"
-                    id="deposit"
-                    value={newCustomer.deposit ? newCustomer.deposit.toLocaleString() : ''}
-                    onChange={(e) => handleNumberChange('deposit', e.target.value)}
-                    className="form-input"
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label htmlFor="monthly_fee">월 이용료</label>
-                  <input
-                    type="text"
-                    id="monthly_fee"
-                    value={newCustomer.monthly_fee ? newCustomer.monthly_fee.toLocaleString() : ''}
-                    onChange={(e) => handleNumberChange('monthly_fee', e.target.value)}
-                    className="form-input"
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label htmlFor="first_fee">초기 비용</label>
-                  <input
-                    type="text"
-                    id="first_fee"
-                    value={newCustomer.first_fee ? newCustomer.first_fee.toLocaleString() : ''}
-                    onChange={(e) => handleNumberChange('first_fee', e.target.value)}
-                    className="form-input"
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label htmlFor="status">상태</label>
-                  <select
-                    id="status"
-                    value={newCustomer.status}
-                    onChange={(e) => handleInputChange('status', e.target.value)}
-                    className="form-input"
-                    required
-                  >
-                    <option value="입실">입실</option>
-                    <option value="퇴실">퇴실</option>
-                    <option value="예약">예약</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div style={{ flex: '1 1 45%' }}>
-                {/* 오른쪽 컬럼 필드 */}
-                <div className="form-group">
-                  <label htmlFor="move_in_date">입주일</label>
-                  <input
-                    type="date"
-                    id="move_in_date"
-                    value={newCustomer.move_in_date || ''}
-                    onChange={(e) => handleInputChange('move_in_date', e.target.value)}
-                    className="form-input"
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label htmlFor="move_out_date">퇴실일</label>
-                  <input
-                    type="date"
-                    id="move_out_date"
-                    value={newCustomer.move_out_date || ''}
-                    onChange={(e) => handleInputChange('move_out_date', e.target.value)}
-                    className="form-input"
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label htmlFor="phone">연락처</label>
-                  <input
-                    type="text"
-                    id="phone"
-                    value={newCustomer.phone}
-                    onChange={(e) => handleInputChange('phone', e.target.value)}
-                    className="form-input"
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label htmlFor="phone_sub">추가 연락처</label>
-                  <input
-                    type="text"
-                    id="phone_sub"
-                    value={newCustomer.phone_sub}
-                    onChange={(e) => handleInputChange('phone_sub', e.target.value)}
-                    className="form-input"
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label htmlFor="resident_id">주민등록번호</label>
-                  <input
-                    type="text"
-                    id="resident_id"
-                    value={newCustomer.resident_id}
-                    onChange={(e) => handleInputChange('resident_id', e.target.value)}
-                    className="form-input"
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label htmlFor="address">주소</label>
-                  <input
-                    type="text"
-                    id="address"
-                    value={newCustomer.address}
-                    onChange={(e) => handleInputChange('address', e.target.value)}
-                    className="form-input"
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label htmlFor="memo">메모</label>
-                  <textarea
-                    id="memo"
-                    value={newCustomer.memo}
-                    onChange={(e) => handleInputChange('memo', e.target.value)}
-                    className="form-input"
-                    rows={3}
-                  />
-                </div>
-              </div>
-            </div>
-              
-            <div className="modal-footer">
-              <button 
-                type="button" 
-                className="btn btn-secondary" 
-                onClick={onClose}
-                disabled={loading}
-              >
-                취소
-              </button>
-              <button 
-                type="submit" 
-                className="btn btn-primary"
-                disabled={loading}
-              >
-                {loading ? '저장 중...' : '저장'}
-              </button>
-            </div>
-          </form>
-        </div>
+          <div className="modal-footer">
+            <button 
+              type="button" 
+              className="btn btn-secondary"
+              onClick={onClose}
+              disabled={loading}
+            >
+              취소
+            </button>
+            <button 
+              type="submit" 
+              className="btn btn-primary"
+              disabled={loading}
+            >
+              {loading ? '저장 중...' : '저장'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
