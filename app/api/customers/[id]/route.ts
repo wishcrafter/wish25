@@ -3,10 +3,10 @@ import { supabase } from '../../../../utils/supabase';
 
 export async function PUT(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const customerId = parseInt(context.params.id);
+    const customerId = parseInt(params.id);
     const updatedData = await request.json();
 
     const { data, error } = await supabase
