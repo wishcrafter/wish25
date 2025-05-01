@@ -12,11 +12,12 @@ interface Props {
   onChange: (vals: [number, number]) => void;
 }
 
-// 1~12월 눈금(mark) 생성
-const marks: Record<number, string> = {};
-for (let i = 1; i <= 12; i++) {
-  marks[i] = `${i}월`;
-}
+// 1~12월 눈금(mark) 생성 - 스타일과 레이블을 포함한 객체로 정의
+const marks: Record<number, { style: React.CSSProperties; label: string }> = {
+  1: { style: { marginTop: '10px', fontSize: '0.75rem', color: '#64748b', whiteSpace: 'nowrap' }, label: '1월' },
+  6: { style: { marginTop: '10px', fontSize: '0.75rem', color: '#64748b', whiteSpace: 'nowrap' }, label: '6월' },
+  12: { style: { marginTop: '10px', fontSize: '0.75rem', color: '#64748b', whiteSpace: 'nowrap' }, label: '12월' }
+};
 
 export default function MonthRangeSlider({ values, onChange }: Props) {
   // rc-slider의 타입을 맞추기 위한 핸들러
@@ -38,18 +39,11 @@ export default function MonthRangeSlider({ values, onChange }: Props) {
         value={values}
         onChange={handleChange}
         railStyle={{ height: 6, backgroundColor: '#e0e0e0' }}
-        markStyle={{ marginTop: '10px', fontSize: '0.75rem', color: '#64748b', whiteSpace: 'nowrap' }}
-        styles={{
-          track: { backgroundColor: '#3b82f6', height: 6 },
-          handle: {
-            borderColor: '#3b82f6',
-            backgroundColor: '#fff',
-            width: 20,
-            height: 20,
-            marginTop: -7,
-            opacity: 1
-          }
-        }}
+        trackStyle={[{ backgroundColor: '#3b82f6', height: 6 }]}
+        handleStyle={[
+          { height: 16, width: 16, marginTop: -5, backgroundColor: '#3b82f6', border: 'none' },
+          { height: 16, width: 16, marginTop: -5, backgroundColor: '#3b82f6', border: 'none' }
+        ]}
       />
     </div>
   );
