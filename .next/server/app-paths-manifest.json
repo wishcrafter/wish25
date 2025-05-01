@@ -1,5 +1,4 @@
 {
-  "/_not-found/page": "app/_not-found/page.js",
   "/api/supabase/route": "app/api/supabase/route.js",
   "/api/customers/route": "app/api/customers/route.js",
   "/dashboard/page": "app/dashboard/page.js",
