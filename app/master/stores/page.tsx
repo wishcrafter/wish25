@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { fetchData } from '../../../utils/supabase-client-api';
+import dynamic from 'next/dynamic';
+import { Metadata } from 'next';
 import PageLayout from '@/app/components/PageLayout';
-import DataTable from '@/components/DataTable';
+import DataTable from '@/app/components/DataTable';
 
 interface StoreData {
   store_id: number;
