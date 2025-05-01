@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CustomerData } from '../types';
+import { CustomerData } from '@/types/types';
 
 interface CustomerRegistrationModalProps {
   onClose: () => void;
