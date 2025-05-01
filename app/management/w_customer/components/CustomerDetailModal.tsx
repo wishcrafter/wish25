@@ -1,364 +1,251 @@
 'use client';
 
-import { useState } from 'react';
-
-interface CustomerData {
-  id: number;
-  room_no: number;
-  name: string;
-  deposit: number;
-  monthly_fee: number;
-  first_fee: number;
-  move_in_date: string | null;
-  move_out_date: string | null;
-  status: string;
-  memo: string;
-  resident_id: string;
-  phone: string;
-  phone_sub: string;
-  address: string;
-  created_at: string;
-  updated_at: string;
-}
+import { useState, useEffect } from 'react';
+import { CustomerData } from '../types';
 
 interface CustomerDetailModalProps {
   customer: CustomerData;
   onClose: () => void;
-  onSave: (updatedCustomer: CustomerData) => Promise<boolean>;
-  columnMapping: { [key: string]: string };
-  columnStyles: { [key: string]: string };
-  formatPrice: (price: number) => string;
-  formatDate: (dateString: string | null) => string;
-  getStatusClass: (status: string) => string;
+  onSave: (customer: CustomerData) => Promise<boolean>;
 }
 
-export default function CustomerDetailModal({
-  customer,
-  onClose,
-  onSave,
-  columnMapping,
-  columnStyles,
-  formatPrice,
-  formatDate,
-  getStatusClass
-}: CustomerDetailModalProps) {
-  const [editedCustomer, setEditedCustomer] = useState<CustomerData>({...customer});
-  const [isEditing, setIsEditing] = useState(false);
-  const [loading, setLoading] = useState(false);
+export default function CustomerDetailModal({ customer, onClose, onSave }: CustomerDetailModalProps) {
+  const [editedCustomer, setEditedCustomer] = useState<CustomerData>(customer);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // 수정 모드 토글
-  const toggleEditMode = () => {
-    setIsEditing(!isEditing);
-  };
+  useEffect(() => {
+    setEditedCustomer(customer);
+  }, [customer]);
 
-  // 입력 필드 변경 핸들러
-  const handleInputChange = (key: keyof CustomerData, value: any) => {
+  const handleInputChange = (field: keyof CustomerData, value: any) => {
     setEditedCustomer(prev => ({
       ...prev,
-      [key]: value
+      [field]: value
     }));
   };
 
-  // 숫자 입력 핸들러 (금액)
-  const handleNumberChange = (key: keyof CustomerData, value: string) => {
-    const numValue = value === '' ? 0 : parseInt(value.replace(/[^0-9]/g, ''), 10);
-    handleInputChange(key, numValue);
-  };
-
-  // 폼 제출 핸들러
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  const handleSave = async () => {
+    setIsSaving(true);
+    setError(null);
+    
     try {
       const success = await onSave(editedCustomer);
       if (success) {
-        setIsEditing(false);
+        onClose();
       }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '저장 중 오류가 발생했습니다.');
     } finally {
-      setLoading(false);
+      setIsSaving(false);
     }
   };
 
-  // 컬럼 키 배열을 두 그룹으로 분리
-  const keys = Object.keys(columnMapping);
-  const midpoint = Math.ceil(keys.length / 2);
-  const leftColumnKeys = keys.slice(0, midpoint);
-  const rightColumnKeys = keys.slice(midpoint);
-
   return (
-    <div className="modal-backdrop">
-      <div className="modal-content" style={{ width: '800px', maxWidth: '95vw' }}>
-        <div className="modal-header">
-          <h2>고객 {isEditing ? '정보 수정' : '상세 정보'}</h2>
-          <button className="modal-close" onClick={onClose}>×</button>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg w-[800px] max-h-[90vh] flex flex-col">
+        <div className="p-4 flex justify-between items-center border-b">
+          <h2 className="text-lg font-medium">고객 상세 정보</h2>
+          <button 
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            ✕
+          </button>
         </div>
-        
-        <div className="modal-body">
-          {isEditing ? (
-            <form onSubmit={handleSubmit}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
-                <div style={{ flex: '1 1 45%' }}>
-                  {leftColumnKeys.map((key) => {
-                    const fieldKey = key as keyof CustomerData;
-                    
-                    // 날짜 필드 처리
-                    if (key === 'move_in_date' || key === 'move_out_date') {
-                      return (
-                        <div className="form-group" key={key}>
-                          <label htmlFor={key}>{columnMapping[key]}</label>
-                          <input
-                            type="date"
-                            id={key}
-                            value={editedCustomer[fieldKey] as string || ''}
-                            onChange={(e) => handleInputChange(fieldKey, e.target.value)}
-                            className="form-input"
-                          />
-                        </div>
-                      );
-                    }
-                    
-                    // 금액 필드 처리
-                    if (key === 'deposit' || key === 'monthly_fee' || key === 'first_fee') {
-                      return (
-                        <div className="form-group" key={key}>
-                          <label htmlFor={key}>{columnMapping[key]}</label>
-                          <input
-                            type="text"
-                            id={key}
-                            value={editedCustomer[fieldKey] ? editedCustomer[fieldKey]?.toLocaleString() : ''}
-                            onChange={(e) => handleNumberChange(fieldKey, e.target.value)}
-                            className="form-input"
-                          />
-                        </div>
-                      );
-                    }
-                    
-                    // 상태 필드 처리
-                    if (key === 'status') {
-                      return (
-                        <div className="form-group" key={key}>
-                          <label htmlFor={key}>{columnMapping[key]}</label>
-                          <select
-                            id={key}
-                            value={editedCustomer[fieldKey] as string || ''}
-                            onChange={(e) => handleInputChange(fieldKey, e.target.value)}
-                            className="form-input"
-                          >
-                            <option value="">선택하세요</option>
-                            <option value="입실">입실</option>
-                            <option value="퇴실">퇴실</option>
-                            <option value="예약">예약</option>
-                          </select>
-                        </div>
-                      );
-                    }
-                    
-                    // 일반 텍스트 필드 처리
-                    return (
-                      <div className="form-group" key={key}>
-                        <label htmlFor={key}>{columnMapping[key]}</label>
-                        <input
-                          type="text"
-                          id={key}
-                          value={editedCustomer[fieldKey] as string || ''}
-                          onChange={(e) => handleInputChange(fieldKey, e.target.value)}
-                          className="form-input"
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-                <div style={{ flex: '1 1 45%' }}>
-                  {rightColumnKeys.map((key) => {
-                    const fieldKey = key as keyof CustomerData;
-                    
-                    // 날짜 필드 처리
-                    if (key === 'move_in_date' || key === 'move_out_date') {
-                      return (
-                        <div className="form-group" key={key}>
-                          <label htmlFor={key}>{columnMapping[key]}</label>
-                          <input
-                            type="date"
-                            id={key}
-                            value={editedCustomer[fieldKey] as string || ''}
-                            onChange={(e) => handleInputChange(fieldKey, e.target.value)}
-                            className="form-input"
-                          />
-                        </div>
-                      );
-                    }
-                    
-                    // 금액 필드 처리
-                    if (key === 'deposit' || key === 'monthly_fee' || key === 'first_fee') {
-                      return (
-                        <div className="form-group" key={key}>
-                          <label htmlFor={key}>{columnMapping[key]}</label>
-                          <input
-                            type="text"
-                            id={key}
-                            value={editedCustomer[fieldKey] ? editedCustomer[fieldKey]?.toLocaleString() : ''}
-                            onChange={(e) => handleNumberChange(fieldKey, e.target.value)}
-                            className="form-input"
-                          />
-                        </div>
-                      );
-                    }
-                    
-                    // 상태 필드 처리
-                    if (key === 'status') {
-                      return (
-                        <div className="form-group" key={key}>
-                          <label htmlFor={key}>{columnMapping[key]}</label>
-                          <select
-                            id={key}
-                            value={editedCustomer[fieldKey] as string || ''}
-                            onChange={(e) => handleInputChange(fieldKey, e.target.value)}
-                            className="form-input"
-                          >
-                            <option value="">선택하세요</option>
-                            <option value="입실">입실</option>
-                            <option value="퇴실">퇴실</option>
-                            <option value="예약">예약</option>
-                          </select>
-                        </div>
-                      );
-                    }
-                    
-                    // 메모 필드 특별 처리
-                    if (key === 'memo') {
-                      return (
-                        <div className="form-group" key={key}>
-                          <label htmlFor={key}>{columnMapping[key]}</label>
-                          <textarea
-                            id={key}
-                            value={editedCustomer[fieldKey] as string || ''}
-                            onChange={(e) => handleInputChange(fieldKey, e.target.value)}
-                            className="form-input"
-                            rows={3}
-                          />
-                        </div>
-                      );
-                    }
-                    
-                    // 일반 텍스트 필드 처리
-                    return (
-                      <div className="form-group" key={key}>
-                        <label htmlFor={key}>{columnMapping[key]}</label>
-                        <input
-                          type="text"
-                          id={key}
-                          value={editedCustomer[fieldKey] as string || ''}
-                          onChange={(e) => handleInputChange(fieldKey, e.target.value)}
-                          className="form-input"
-                        />
-                      </div>
-                    );
-                  })}
+
+        <div className="p-6 flex-1 overflow-y-auto">
+          <div className="grid grid-cols-2 gap-6">
+            {/* 좌측 열 - 데이터 테이블 표시 항목 */}
+            <div className="space-y-4">
+              <div className="flex items-center">
+                <label className="w-24 text-right text-sm text-gray-600">호실</label>
+                <div className="flex-1 ml-4">
+                  <input
+                    type="number"
+                    value={editedCustomer.room_no || ''}
+                    onChange={(e) => handleInputChange('room_no', e.target.value ? parseInt(e.target.value) : 0)}
+                    className="w-full h-9 px-3 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
                 </div>
               </div>
-            </form>
-          ) : (
-            <div className="customer-details">
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
-                <div style={{ flex: '1 1 45%' }}>
-                  <table className="details-table" style={{ width: '100%' }}>
-                    <tbody>
-                      {leftColumnKeys.map((key) => {
-                        const fieldKey = key as keyof CustomerData;
-                        const value = customer[fieldKey];
-                        
-                        return (
-                          <tr key={key}>
-                            <th style={{ width: '40%', textAlign: 'left', padding: '8px' }}>{columnMapping[key]}</th>
-                            <td className={columnStyles[key]} style={{ padding: '8px' }}>
-                              {key === 'deposit' || key === 'monthly_fee' || key === 'first_fee'
-                                ? formatPrice(value as number)
-                              : key === 'move_in_date' || key === 'move_out_date'
-                                ? formatDate(value as string | null)
-                              : key === 'status'
-                                ? <span className={getStatusClass(value as string)}>
-                                    {value || '-'}
-                                  </span>
-                              : value || '-'}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+
+              <div className="flex items-center">
+                <label className="w-24 text-right text-sm text-gray-600">이름</label>
+                <div className="flex-1 ml-4">
+                  <input
+                    type="text"
+                    value={editedCustomer.name}
+                    onChange={(e) => handleInputChange('name', e.target.value)}
+                    className="w-full h-9 px-3 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
                 </div>
-                <div style={{ flex: '1 1 45%' }}>
-                  <table className="details-table" style={{ width: '100%' }}>
-                    <tbody>
-                      {rightColumnKeys.map((key) => {
-                        const fieldKey = key as keyof CustomerData;
-                        const value = customer[fieldKey];
-                        
-                        return (
-                          <tr key={key}>
-                            <th style={{ width: '40%', textAlign: 'left', padding: '8px' }}>{columnMapping[key]}</th>
-                            <td className={columnStyles[key]} style={{ padding: '8px' }}>
-                              {key === 'deposit' || key === 'monthly_fee' || key === 'first_fee'
-                                ? formatPrice(value as number)
-                              : key === 'move_in_date' || key === 'move_out_date'
-                                ? formatDate(value as string | null)
-                              : key === 'status'
-                                ? <span className={getStatusClass(value as string)}>
-                                    {value || '-'}
-                                  </span>
-                              : value || '-'}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+              </div>
+
+              <div className="flex items-center">
+                <label className="w-24 text-right text-sm text-gray-600">보증금</label>
+                <div className="flex-1 ml-4">
+                  <input
+                    type="number"
+                    value={editedCustomer.deposit || ''}
+                    onChange={(e) => handleInputChange('deposit', e.target.value ? parseInt(e.target.value) : 0)}
+                    className="w-full h-9 px-3 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center">
+                <label className="w-24 text-right text-sm text-gray-600">월세</label>
+                <div className="flex-1 ml-4">
+                  <input
+                    type="number"
+                    value={editedCustomer.monthly_fee || ''}
+                    onChange={(e) => handleInputChange('monthly_fee', e.target.value ? parseInt(e.target.value) : 0)}
+                    className="w-full h-9 px-3 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center">
+                <label className="w-24 text-right text-sm text-gray-600">입실일</label>
+                <div className="flex-1 ml-4">
+                  <input
+                    type="date"
+                    value={editedCustomer.move_in_date || ''}
+                    onChange={(e) => handleInputChange('move_in_date', e.target.value)}
+                    className="w-full h-9 px-3 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center">
+                <label className="w-24 text-right text-sm text-gray-600">퇴실일</label>
+                <div className="flex-1 ml-4">
+                  <input
+                    type="date"
+                    value={editedCustomer.move_out_date || ''}
+                    onChange={(e) => handleInputChange('move_out_date', e.target.value)}
+                    className="w-full h-9 px-3 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center">
+                <label className="w-24 text-right text-sm text-gray-600">상태</label>
+                <div className="flex-1 ml-4">
+                  <select
+                    value={editedCustomer.status}
+                    onChange={(e) => handleInputChange('status', e.target.value)}
+                    className="w-full h-9 px-3 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="">선택</option>
+                    <option value="입실">입실</option>
+                    <option value="퇴실">퇴실</option>
+                    <option value="계약">계약</option>
+                  </select>
                 </div>
               </div>
             </div>
+
+            {/* 우측 열 - 나머지 항목 */}
+            <div className="space-y-4">
+              <div className="flex items-center">
+                <label className="w-24 text-right text-sm text-gray-600">선납금</label>
+                <div className="flex-1 ml-4">
+                  <input
+                    type="number"
+                    value={editedCustomer.first_fee || ''}
+                    onChange={(e) => handleInputChange('first_fee', e.target.value ? parseInt(e.target.value) : 0)}
+                    className="w-full h-9 px-3 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center">
+                <label className="w-24 text-right text-sm text-gray-600">주민번호</label>
+                <div className="flex-1 ml-4">
+                  <input
+                    type="text"
+                    value={editedCustomer.resident_id}
+                    onChange={(e) => handleInputChange('resident_id', e.target.value)}
+                    className="w-full h-9 px-3 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center">
+                <label className="w-24 text-right text-sm text-gray-600">연락처</label>
+                <div className="flex-1 ml-4">
+                  <input
+                    type="text"
+                    value={editedCustomer.phone}
+                    onChange={(e) => handleInputChange('phone', e.target.value)}
+                    className="w-full h-9 px-3 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center">
+                <label className="w-24 text-right text-sm text-gray-600">비상연락처</label>
+                <div className="flex-1 ml-4">
+                  <input
+                    type="text"
+                    value={editedCustomer.phone_sub}
+                    onChange={(e) => handleInputChange('phone_sub', e.target.value)}
+                    className="w-full h-9 px-3 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center">
+                <label className="w-24 text-right text-sm text-gray-600">주소</label>
+                <div className="flex-1 ml-4">
+                  <input
+                    type="text"
+                    value={editedCustomer.address}
+                    onChange={(e) => handleInputChange('address', e.target.value)}
+                    className="w-full h-9 px-3 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 메모 필드 */}
+          <div className="mt-6">
+            <div className="flex items-start">
+              <label className="w-24 text-right text-sm text-gray-600 mt-2">메모</label>
+              <div className="flex-1 ml-4">
+                <textarea
+                  value={editedCustomer.memo}
+                  onChange={(e) => handleInputChange('memo', e.target.value)}
+                  className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 min-h-[100px] resize-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          {error && (
+            <div className="mt-4 text-center text-red-600 text-sm">
+              {error}
+            </div>
           )}
         </div>
-        
-        <div className="modal-footer">
-          {isEditing ? (
-            <>
-              <button 
-                type="button" 
-                className="btn btn-secondary"
-                onClick={() => {
-                  setEditedCustomer({...customer});
-                  setIsEditing(false);
-                }}
-              >
-                취소
-              </button>
-              <button 
-                type="button" 
-                className="btn btn-primary"
-                onClick={handleSubmit}
-                disabled={loading}
-              >
-                {loading ? '저장 중...' : '저장'}
-              </button>
-            </>
-          ) : (
-            <>
-              <button 
-                type="button" 
-                className="btn btn-secondary"
-                onClick={onClose}
-              >
-                닫기
-              </button>
-              <button 
-                type="button" 
-                className="btn btn-primary"
-                onClick={toggleEditMode}
-              >
-                수정하기
-              </button>
-            </>
-          )}
+
+        <div className="p-4 flex justify-end space-x-2 border-t">
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="px-4 h-9 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-blue-300 disabled:cursor-not-allowed"
+          >
+            {isSaving ? '저장 중...' : '저장'}
+          </button>
+          <button
+            onClick={onClose}
+            className="px-4 h-9 border border-gray-300 rounded hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            취소
+          </button>
         </div>
       </div>
     </div>

@@ -1,22 +1,21 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { fetchData, updateData } from '../../../../utils/supabase-client-api';
+import { formatAmount, formatDate, formatEmptyValue } from '@/utils/format';
 
 interface WStudioData {
   id: number;
   date: string;
-  time: string;
-  desc: string;
-  amount_out: number;
   amount_in: number;
-  balance: number;
-  memo: string;
-  branch: string;
-  updated_at: string | null;
+  estimated_room: number | null;
   room: number | null;
   real_month: number | null;
   real_sales: number | null;
+  manage: string | null;
+  memo: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface Store {
@@ -47,17 +46,19 @@ const columnMapping = {
   estimated_room: '추정 방번호',
   room: '방번호',
   real_month: '해당월',
-  real_sales: '해당매출'
+  real_sales: '해당매출',
+  manage: '관리내용'
 } as const;
 
 const columnStyles = {
-  date: 'col-date text-center min-w-[100px] max-w-[150px]',
-  memo: 'col-text text-center min-w-[100px] max-w-[150px]',
-  amount_in: 'col-number text-right min-w-[100px] max-w-[150px]',
-  estimated_room: 'col-number text-center min-w-[100px] max-w-[150px]',
-  room: 'col-number text-right min-w-[100px] max-w-[150px]',
-  real_month: 'col-number text-right min-w-[100px] max-w-[150px]',
-  real_sales: 'col-number text-center min-w-[100px] max-w-[150px]'
+  date: 'col-date text-center min-w-[100px] max-w-[120px]',
+  memo: 'col-text text-center min-w-[100px] max-w-[120px]',
+  amount_in: 'col-number text-right min-w-[100px] max-w-[120px]',
+  estimated_room: 'col-number text-center min-w-[40px] max-w-[50px]',
+  room: 'col-number text-right min-w-[100px] max-w-[120px]',
+  real_month: 'col-number text-right min-w-[100px] max-w-[120px]',
+  real_sales: 'col-number text-center min-w-[100px] max-w-[120px]',
+  manage: 'col-text text-left min-w-[150px] max-w-[200px]'
 } as const;
 
 export default function WStudioContent(props: WStudioContentProps) {
@@ -70,6 +71,7 @@ export default function WStudioContent(props: WStudioContentProps) {
   const [dirtyFields, setDirtyFields] = useState<Set<number>>(new Set());
   const [statusFilter, setStatusFilter] = useState<string>('입실');
   const [customers, setCustomers] = useState<CustomerData[]>([]);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   // 연도 옵션 생성 (현재 연도 기준 이전 5년)
   const years = Array.from({ length: 5 }, (_, i) => 
@@ -249,19 +251,51 @@ export default function WStudioContent(props: WStudioContentProps) {
   };
 
   // 입력 필드 변경 핸들러
-  const handleInputChange = (id: number, field: string, value: string | number | null) => {
-    let numValue: number | null = null;
+  const handleInputChange = async (id: number, field: string, value: string | number | null) => {
+    let processedValue: string | number | null = value;
     
-    if (value === null) {
-      numValue = null;
-    } else if (typeof value === 'string') {
-      numValue = value === '' ? null : parseInt(value, 10);
-      if (isNaN(Number(numValue)) && numValue !== null) return;
-    } else {
-      numValue = value;
+    // 숫자 필드인 경우 숫자로 변환
+    if (['room', 'real_month', 'real_sales', 'amount_in'].includes(field)) {
+      if (value === null || value === '') {
+        processedValue = null;
+      } else {
+        const numValue = Number(value);
+        if (!isNaN(numValue)) {
+          processedValue = numValue;
+        } else {
+          return; // 유효하지 않은 숫자는 무시
+        }
+      }
     }
     
-    updateCellData(id, field, numValue);
+    try {
+      // 로컬 데이터 업데이트
+      setTransactions(prevTransactions => 
+        prevTransactions.map(transaction => 
+          transaction.id === id ? { ...transaction, [field]: processedValue } : transaction
+        )
+      );
+      
+      // 변경된 필드 추적
+      setDirtyFields(prev => {
+        const newSet = new Set(prev);
+        newSet.add(id);
+        return newSet;
+      });
+
+      // 즉시 저장 처리
+      const result = await updateData('wstudio', 
+        { id }, 
+        { [field]: processedValue }
+      );
+
+      if (!result.success) {
+        throw new Error(`데이터 저장 중 오류: ${result.message}`);
+      }
+    } catch (err: any) {
+      console.error('입력값 저장 중 오류:', err);
+      setError(err.message);
+    }
   };
 
   // 텍스트 유사도 확인 함수
@@ -365,7 +399,6 @@ export default function WStudioContent(props: WStudioContentProps) {
       return formatDate(transaction.date);
     }
     
-    // amount_in 필드 처리
     if (key === 'amount_in') {
       return formatAmount(transaction.amount_in);
     }
@@ -373,27 +406,21 @@ export default function WStudioContent(props: WStudioContentProps) {
     // 추정 방번호 필드 처리
     if (key === 'estimated_room') {
       const estimatedRoom = findSimilarCustomer(transaction.memo);
+      if (estimatedRoom === null) return '-';
       
-      return estimatedRoom !== null ? (
-        <span 
-          className="estimated-room-value" 
-          style={{ 
-            fontWeight: 500, 
-            color: '#3182ce', 
-            cursor: 'pointer',
-            textDecoration: 'underline'
-          }}
+      return (
+        <button
+          className="estimated-room-btn"
           onClick={() => setRoomFromEstimation(transaction.id, estimatedRoom)}
-          title="클릭하여 방번호, 해당월, 해당매출 자동 설정"
+          disabled={!estimatedRoom}
         >
           {estimatedRoom}
-        </span>
-      ) : '-';
+        </button>
+      );
     }
     
     // real_sales 필드 처리
     if (key === 'real_sales') {
-      // 항상 기본값을 설정 (입력값이 있으면 입력값, 없으면 입금액)
       const defaultValue = transaction.real_sales !== null 
         ? transaction.real_sales 
         : transaction.amount_in;
@@ -424,7 +451,6 @@ export default function WStudioContent(props: WStudioContentProps) {
     
     // room 필드 처리
     if (key === 'room') {
-      // 기본값: 설정되지 않았을 경우 추정 방번호 사용
       const estimatedRoom = findSimilarCustomer(transaction.memo);
       const defaultValue = transaction.room !== null 
         ? transaction.room 
@@ -449,9 +475,8 @@ export default function WStudioContent(props: WStudioContentProps) {
     
     // real_month 필드 처리
     if (key === 'real_month') {
-      // 기본값: 거래일자의 월 (만약 설정되지 않았다면)
       const transactionDate = new Date(transaction.date);
-      const month = transactionDate.getMonth() + 1; // JavaScript 월은 0부터 시작하므로 +1
+      const month = transactionDate.getMonth() + 1;
       const defaultValue = transaction.real_month !== null 
         ? transaction.real_month 
         : month;
@@ -473,30 +498,30 @@ export default function WStudioContent(props: WStudioContentProps) {
       );
     }
     
-    // 기타 필드 처리
-    return transaction[key] || '-';
-  };
-
-  // 추정 방번호를 클릭하면 실제 방번호로 설정하는 함수
-  const setRoomFromEstimation = (transactionId: number, roomNo: number | null) => {
-    if (roomNo !== null) {
-      // 방번호 설정
-      updateCellData(transactionId, 'room', roomNo);
-      
-      // 해당 거래 찾기
-      const transaction = transactions.find(t => t.id === transactionId);
-      if (transaction) {
-        // 거래일자에서 월 구하기
-        const transactionDate = new Date(transaction.date);
-        const month = transactionDate.getMonth() + 1;
-        
-        // 해당월 설정
-        updateCellData(transactionId, 'real_month', month);
-        
-        // 해당매출에 입금액 설정
-        updateCellData(transactionId, 'real_sales', transaction.amount_in);
-      }
+    if (key === 'manage') {
+      return (
+        <input
+          type="text"
+          value={transaction.manage || ''}
+          onChange={(e) => {
+            handleInputChange(transaction.id, 'manage', e.target.value);
+            setDirtyFields(prev => {
+              const newSet = new Set(prev);
+              newSet.add(transaction.id);
+              return newSet;
+            });
+          }}
+          className="w-full bg-transparent border border-gray-200 rounded px-2 py-1 text-xs"
+          placeholder="관리내용을 입력하세요"
+          style={{ 
+            width: '100%', 
+            height: '24px'
+          }}
+        />
+      );
     }
+    
+    return transaction[key]?.toString() || '-';
   };
 
   // 저장 함수
@@ -516,7 +541,8 @@ export default function WStudioContent(props: WStudioContentProps) {
           { 
             room: transaction.room,
             real_month: transaction.real_month,
-            real_sales: transaction.real_sales
+            real_sales: transaction.real_sales,
+            manage: transaction.manage
           }
         );
         
@@ -651,6 +677,57 @@ export default function WStudioContent(props: WStudioContentProps) {
         </div>
       </div>
     );
+  };
+
+  // 추정 방번호를 클릭하면 실제 방번호로 설정하는 함수
+  const setRoomFromEstimation = async (transactionId: number, roomNo: number | null) => {
+    if (roomNo === null) return;
+    
+    try {
+      const transaction = transactions.find(t => t.id === transactionId);
+      if (!transaction) return;
+      
+      // 거래일자에서 월 구하기
+      const transactionDate = new Date(transaction.date);
+      const month = transactionDate.getMonth() + 1;
+      
+      // 데이터 업데이트 - 거래내역 기반으로 초기화
+      const updateFields = {
+        room: roomNo,
+        real_month: month,
+        real_sales: transaction.amount_in,
+        manage: null // 관리내용도 초기화
+      };
+      
+      // 서버에 즉시 저장
+      const result = await updateData('wstudio', 
+        { id: transactionId }, 
+        updateFields
+      );
+      
+      if (!result.success) {
+        throw new Error(`데이터 저장 중 오류: ${result.message}`);
+      }
+      
+      // 로컬 상태 업데이트
+      setTransactions(prev => prev.map(t => {
+        if (t.id === transactionId) {
+          return { ...t, ...updateFields };
+        }
+        return t;
+      }));
+      
+      // 변경 사항 추적
+      setDirtyFields(prev => {
+        const newSet = new Set(prev);
+        newSet.add(transactionId);
+        return newSet;
+      });
+      
+    } catch (err: any) {
+      console.error('추정 방번호 설정 중 오류:', err);
+      setError(err.message);
+    }
   };
 
   // 추가: 로딩 오버레이 컴포넌트

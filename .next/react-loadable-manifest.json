@@ -36,12 +36,6 @@
       "static/chunks/_app-pages-browser_app_management_wstudio_components_WStudioContent_tsx.js"
     ]
   },
-  "app\\master\\vendors\\page.tsx -> ../components/VendorsContent": {
-    "id": "app\\master\\vendors\\page.tsx -> ../components/VendorsContent",
-    "files": [
-      "static/chunks/_app-pages-browser_app_master_components_VendorsContent_tsx.js"
-    ]
-  },
   "node_modules\\next\\dist\\client\\components\\react-dev-overlay\\utils\\use-websocket.js -> @vercel/turbopack-ecmascript-runtime/browser/dev/hmr-client/hmr-client.ts": {
     "id": "node_modules\\next\\dist\\client\\components\\react-dev-overlay\\utils\\use-websocket.js -> @vercel/turbopack-ecmascript-runtime/browser/dev/hmr-client/hmr-client.ts",
     "files": [

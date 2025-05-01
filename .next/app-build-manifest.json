@@ -11,30 +11,35 @@
       "static/chunks/main-app.js",
       "static/chunks/app/page.js"
     ],
-    "/dashboard/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/dashboard/page.js"
-    ],
     "/management/sales/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/management/sales/page.js"
     ],
-    "/management/expenses/page": [
+    "/management/others/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/management/expenses/page.js"
+      "static/chunks/app/management/others/page.js"
+    ],
+    "/dashboard/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/dashboard/page.js"
+    ],
+    "/api/supabase/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/supabase/route.js"
     ],
     "/management/purchases/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/management/purchases/page.js"
     ],
-    "/management/others/page": [
+    "/management/expenses/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/management/others/page.js"
+      "static/chunks/app/management/expenses/page.js"
     ],
     "/management/wstudio/page": [
       "static/chunks/webpack.js",
@@ -46,25 +51,15 @@
       "static/chunks/main-app.js",
       "static/chunks/app/management/w_customer/page.js"
     ],
-    "/master/stores/page": [
+    "/api/customers/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/master/stores/page.js"
+      "static/chunks/app/api/customers/route.js"
     ],
-    "/api/supabase/route": [
+    "/_not-found/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/supabase/route.js"
-    ],
-    "/master/vendors/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/master/vendors/page.js"
-    ],
-    "/master/w_rooms/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/master/w_rooms/page.js"
+      "static/chunks/app/_not-found/page.js"
     ]
   }
 }

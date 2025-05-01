@@ -1,7 +1,7 @@
 'use client';
 
 import WCustomerContent from './components/WCustomerContent';
-import PageLayout from '@/components/PageLayout';
+import PageLayout from '@/app/components/PageLayout';
 import { useState } from 'react';
 import CustomerRegisterModal from './components/CustomerRegisterModal';
 

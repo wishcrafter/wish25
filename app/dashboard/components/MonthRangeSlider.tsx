@@ -38,6 +38,7 @@ export default function MonthRangeSlider({ values, onChange }: Props) {
         value={values}
         onChange={handleChange}
         railStyle={{ height: 6, backgroundColor: '#e0e0e0' }}
+        markStyle={{ marginTop: '10px', fontSize: '0.75rem', color: '#64748b', whiteSpace: 'nowrap' }}
         styles={{
           track: { backgroundColor: '#3b82f6', height: 6 },
           handle: {

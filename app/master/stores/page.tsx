@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { fetchData } from '../../../utils/supabase-client-api';
-import PageLayout from '@/components/PageLayout';
+import PageLayout from '@/app/components/PageLayout';
 import DataTable from '@/components/DataTable';
 
 interface StoreData {

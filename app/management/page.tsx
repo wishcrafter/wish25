@@ -1,6 +1,6 @@
 'use client';
 
-import PageLayout from '@/components/PageLayout';
+import PageLayout from '@/app/components/PageLayout';
 
 export default function ManagementPage() {
   return (

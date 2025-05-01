@@ -18,6 +18,48 @@
   --background-end-rgb: 255, 255, 255;
 }
 
+/* rc-slider 마크 스타일 */
+.rc-slider-mark-text {
+  font-size: 0.75rem;
+  color: #64748b;
+  white-space: nowrap;
+  margin-top: 10px;
+}
+
+.rc-slider-mark-text-active {
+  color: #3b82f6;
+}
+
+/* 그룹 합계 카드 스타일 */
+.store-total-card.total-card {
+  background: linear-gradient(to bottom right, #eff6ff, #dbeafe);
+  border: 1px solid #e2e8f0;
+}
+
+.store-total-card.total-card .store-name {
+  color: #1e40af;
+  font-weight: 600;
+  border-bottom-color: #e2e8f0;
+}
+
+.store-total-card.total-card .amount-label {
+  color: #64748b;
+}
+
+.store-total-card.total-card .amount-value {
+  color: #334155;
+  font-weight: 500;
+}
+
+.store-total-card.total-card .amount-row.transactions {
+  border-top-color: #e2e8f0;
+}
+
+.store-total-card.total-card .amount-row.transactions .amount-value {
+  color: #1e40af;
+  font-weight: 600;
+}
+
 /* 로그인 페이지 스타일 */
 .login-container {
   display: flex;
@@ -178,24 +220,24 @@ body {
   
   .main {
     flex: 1;
-  padding: 0.25rem;
-  margin-left: 250px;
-  box-sizing: border-box;
-  width: calc(100% - 250px);
-  max-width: 100%;
-  background-color: #f8fafc;
-  min-height: 100vh;
-  overflow-x: hidden;
+    padding: 1.5rem;
+    margin-left: 250px;
+    box-sizing: border-box;
+    width: calc(100% - 250px);
+    max-width: 100%;
+    background-color: #f8fafc;
+    height: 100vh;
+    overflow-y: auto;
 }
 
 /* 페이지 컨테이너 스타일 */
 .page-container {
   @apply bg-white rounded-xl shadow-sm;
-  padding: 0.5rem;
+  padding: 1.5rem;
   margin: 0;
   width: 100%;
   box-sizing: border-box;
-  overflow-x: hidden;
+  min-height: calc(100vh - 3rem);
 }
 
 .page-title {
@@ -213,9 +255,8 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0;
   padding-bottom: 0.25rem;
-  border-bottom: 1px solid #f1f5f9;
 }
 
 .page-header .page-title {
@@ -224,53 +265,62 @@ body {
 
 /* 데이터 테이블 스타일 */
 .data-table-container {
-  margin-top: 0.25rem;
   width: 100%;
-  box-sizing: border-box;
-  background-color: white;
-  border-radius: 4px;
-  border: 1px solid var(--border-color);
-  overflow-x: auto;
-  max-height: calc(100vh - 280px);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  background: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
 }
 
 .data-table {
   width: 100%;
   border-collapse: collapse;
+  background: white;
 }
 
 .data-table th {
-  background: #ffffff;
-  color: #334155;
+  background: #f8fafc;
+  padding: 1rem;
   font-weight: 600;
-  font-size: 0.7rem;
-  padding: 0.25rem;
-  text-align: center;
+  text-align: left;
+  color: #475569;
   border-bottom: 1px solid #e2e8f0;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 0.875rem;
 }
 
 .data-table td {
-  padding: 0.25rem;
-  font-size: 0.7rem;
-  border-bottom: 1px solid #f1f5f9;
-  white-space: nowrap;
-  color: #334155;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-align: center;
-}
-
-.data-table tr {
-  background: white;
-  line-height: 1.2;
+  padding: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  color: #1e293b;
+  font-size: 0.875rem;
 }
 
 .data-table tr:hover td {
-  background: #f8fafc;
+  background-color: #f8fafc;
+}
+
+.col-action {
+  width: 100px;
+  text-align: center;
+}
+
+.btn-sm {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  border-radius: 0.375rem;
+  transition: all 0.2s;
+}
+
+.btn-outline {
+  border: 1px solid #e2e8f0;
+  background-color: white;
+  color: #4a5568;
+}
+
+.btn-outline:hover {
+  background-color: #f7fafc;
+  border-color: #cbd5e0;
 }
 
 /* 점포명 컬럼 */
@@ -368,13 +418,22 @@ body {
 
 /* 상태 표시 공통 스타일 */
 .loading-state {
-  @apply flex justify-center items-center p-2 text-blue-600;
-  font-size: 0.8rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  background: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  color: #6b7280;
 }
 
 .error-state {
-  @apply flex justify-center items-center p-2 text-red-500 bg-red-50/50 rounded;
-  font-size: 0.8rem;
+  padding: 2rem;
+  background: #fee2e2;
+  border-radius: 0.5rem;
+  color: #b91c1c;
+  text-align: center;
 }
 
 .empty-state {
@@ -504,21 +563,13 @@ body {
 }
 
 /* 필터 영역 스타일 */
-.filters-container {
-  margin-bottom: 20px;
-  padding: 16px;
-  background: #f8f9fa;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-}
-
 .date-filters {
   display: flex;
   align-items: center;
   gap: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
   background: #f8f9fa;
-  padding: 1rem;
+  padding: 0.75rem;
   border-radius: 8px;
   border: 1px solid #e2e8f0;
   width: 100%;
@@ -587,6 +638,13 @@ body {
   border-radius: 6px;
   border: 1px solid #e2e8f0;
   transition: all 0.2s ease;
+  min-height: 150px;
+  width: auto;
+  max-width: none;
+  margin-bottom: 0;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
 }
 
 .store-total-card:hover {
@@ -611,7 +669,8 @@ body {
   flex-direction: column;
   gap: 4px;
   position: relative;
-  min-height: 100px;
+  flex: 1;
+  min-height: 120px;
 }
 
 .amount-row {
@@ -620,6 +679,7 @@ body {
   align-items: center;
   font-size: 0.85rem;
   line-height: 1.2;
+  padding: 2px 0;
 }
 
 .amount-label {
@@ -1215,26 +1275,28 @@ body {
 
 /* 상태 표시 스타일 */
 .status {
-  display: inline-block;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
   font-weight: 500;
 }
 
 .status-active {
-  background-color: #e6f7ee;
-  color: #00a651;
+  background-color: #dcfce7;
+  color: #15803d;
 }
 
 .status-inactive {
-  background-color: #ffeeee;
-  color: #f44336;
+  background-color: #fee2e2;
+  color: #b91c1c;
 }
 
 .status-pending {
-  background-color: #fff8e6;
-  color: #ff9800;
+  background-color: #fef9c3;
+  color: #854d0e;
 }
 
 /* 방번호별 입금액 카드 스타일 */
@@ -2131,4 +2193,127 @@ td {
 
 .btn-sm:active {
   transform: scale(0.98);
+}
+
+.others-page .store-total-card {
+  min-height: 80px;
+  padding: 0.75rem;
+}
+
+.others-page .store-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 42px;
+}
+
+.others-page .amount-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  line-height: 2;
+  padding: 0;
+}
+
+.wstudio-page {
+  padding: 1rem;
+}
+
+.wstudio-page .data-table-container {
+  margin-top: 0.25rem;
+  width: 100%;
+  box-sizing: border-box;
+  background-color: white;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  overflow-x: auto;
+  max-height: calc(100vh - 280px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.wstudio-page .data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.wstudio-page .data-table th,
+.wstudio-page .data-table td {
+  padding: 0.25rem;
+  font-size: 0.7rem;
+  text-align: center;
+  min-width: 80px;
+  max-width: 120px;
+}
+
+.wstudio-page .data-table .col-name,
+.wstudio-page .data-table td.col-name {
+  min-width: 100px;
+  max-width: 120px;
+  text-align: center;
+  color: #334155;
+}
+
+.wstudio-page .data-table .col-date,
+.wstudio-page .data-table td.col-date {
+  min-width: 100px;
+  max-width: 120px;
+  text-align: center;
+  color: #64748b;
+}
+
+.wstudio-page .data-table .col-number,
+.wstudio-page .data-table td.col-number {
+  min-width: 100px;
+  max-width: 120px;
+  text-align: right;
+  color: #334155;
+}
+
+.wstudio-page .data-table .col-actions,
+.wstudio-page .data-table td.col-actions {
+  min-width: 80px;
+  max-width: 100px;
+  text-align: center;
+}
+
+.wstudio-page .data-table-container::before,
+.wstudio-page .data-table-container::after {
+  display: none;
+}
+
+.wstudio-page .room-number-btn {
+  display: none;
+}
+
+.estimated-room-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 8px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: #2563eb;
+  background-color: #eff6ff;
+  border: 1px solid #dbeafe;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-width: 24px;
+  text-align: center;
+}
+
+.estimated-room-btn:hover {
+  background-color: #dbeafe;
+  border-color: #2563eb;
+}
+
+.estimated-room-btn:active {
+  background-color: #bfdbfe;
+}
+
+.estimated-room-btn:disabled {
+  background-color: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #94a3b8;
+  cursor: not-allowed;
 }

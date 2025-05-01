@@ -1,7 +1,7 @@
 'use client';
 
 import WRoomsContent from './components/WRoomsContent';
-import PageLayout from '@/components/PageLayout';
+import PageLayout from '@/app/components/PageLayout';
 import { useState } from 'react';
 
 export default function WRoomsPage() {
