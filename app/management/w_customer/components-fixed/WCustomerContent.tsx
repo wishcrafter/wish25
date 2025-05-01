@@ -9,7 +9,7 @@ import CustomerDetailModal from './CustomerDetailModal';
 
 interface WCustomerContentProps {
   statusFilter: string;
-  onCustomerCreated?: () => void;
+  onCustomerCreated: () => void;
   onLoadingChange?: (isLoading: boolean) => void;
   onErrorChange?: (error: string | null) => void;
 }
@@ -77,9 +77,7 @@ export default function WCustomerContent({ statusFilter, onCustomerCreated, onLo
   // 고객 등록 후 목록 갱신을 위한 함수
   useEffect(() => {
     // onCustomerCreated가 호출되었을 때 새로고침
-    if (onCustomerCreated) {
-      fetchCustomers();
-    }
+    fetchCustomers();
   }, [onCustomerCreated]);
 
   // 부모 컴포넌트에 로딩 상태 전달
