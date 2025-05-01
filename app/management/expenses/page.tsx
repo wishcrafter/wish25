@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import PageLayout from '@/app/components/PageLayout';
+import PageLayout from '@/components/PageLayout';
 
 // CSR을 위한 동적 임포트
 const ExpensesContent = dynamic(() => import('./components/ExpensesContent'), {
