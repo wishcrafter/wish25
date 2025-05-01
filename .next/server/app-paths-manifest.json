@@ -1,11 +1,10 @@
 {
-  "/api/customers/route": "app/api/customers/route.js",
-  "/api/supabase/route": "app/api/supabase/route.js",
+  "/management/sales/page": "app/management/sales/page.js",
   "/dashboard/page": "app/dashboard/page.js",
   "/management/others/page": "app/management/others/page.js",
-  "/management/sales/page": "app/management/sales/page.js",
-  "/management/purchases/page": "app/management/purchases/page.js",
   "/management/w_customer/page": "app/management/w_customer/page.js",
+  "/management/expenses/page": "app/management/expenses/page.js",
+  "/management/purchases/page": "app/management/purchases/page.js",
   "/management/wstudio/page": "app/management/wstudio/page.js",
-  "/management/expenses/page": "app/management/expenses/page.js"
+  "/page": "app/page.js"
 }
