@@ -13,11 +13,22 @@ interface Props {
 }
 
 // 1~12월 눈금(mark) 생성 - 스타일과 레이블을 포함한 객체로 정의
-const marks: Record<number, { style: React.CSSProperties; label: string }> = {
-  1: { style: { marginTop: '10px', fontSize: '0.75rem', color: '#64748b', whiteSpace: 'nowrap' }, label: '1월' },
-  6: { style: { marginTop: '10px', fontSize: '0.75rem', color: '#64748b', whiteSpace: 'nowrap' }, label: '6월' },
-  12: { style: { marginTop: '10px', fontSize: '0.75rem', color: '#64748b', whiteSpace: 'nowrap' }, label: '12월' }
-};
+const marks: Record<number, { style: React.CSSProperties; label: string }> = {};
+for (let i = 1; i <= 12; i++) {
+  marks[i] = {
+    style: {
+      marginTop: '10px',
+      fontSize: '0.7rem',
+      color: '#64748b',
+      whiteSpace: 'nowrap',
+      minWidth: 20,
+      display: 'inline-block',
+      transform: 'translateX(-50%)',
+      textAlign: 'center',
+    },
+    label: `${i}월`
+  };
+}
 
 export default function MonthRangeSlider({ values, onChange }: Props) {
   // rc-slider의 타입을 맞추기 위한 핸들러

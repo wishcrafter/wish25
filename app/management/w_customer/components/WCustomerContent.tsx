@@ -286,7 +286,7 @@ export default function WCustomerContent({ statusFilter, onCustomerCreated, onLo
   }
 
   return (
-    <div className="customers-content">
+    <div className="w-customer-content">
       {filteredCustomers.length > 0 ? (
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200 bg-white shadow-sm rounded-lg">
@@ -353,6 +353,134 @@ export default function WCustomerContent({ statusFilter, onCustomerCreated, onLo
           getStatusClass={getStatusClass}
         />
       )}
+
+      <style jsx>{`
+        .w-customer-content {
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+        }
+
+        .customers-table {
+          background: white;
+          border-radius: 0.5rem;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          overflow: hidden;
+        }
+
+        table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+
+        th {
+          background: #f8fafc;
+          padding: 0.75rem 1rem;
+          text-align: left;
+          font-weight: 600;
+          color: #4a5568;
+          border-bottom: 1px solid #e2e8f0;
+        }
+
+        td {
+          padding: 0.75rem 1rem;
+          border-bottom: 1px solid #e2e8f0;
+        }
+
+        tr:last-child td {
+          border-bottom: none;
+        }
+
+        .empty-state {
+          padding: 2rem;
+          text-align: center;
+          color: #718096;
+        }
+
+        .error-state {
+          padding: 2rem;
+          text-align: center;
+          color: #e53e3e;
+          background: #fff5f5;
+          border-radius: 0.5rem;
+          margin-bottom: 1rem;
+        }
+
+        .table-not-found {
+          background: white;
+          padding: 2rem;
+          border-radius: 0.5rem;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          text-align: center;
+        }
+
+        .table-not-found h3 {
+          color: #4a5568;
+          margin-bottom: 1rem;
+        }
+
+        .table-not-found p {
+          color: #718096;
+          margin-bottom: 1.5rem;
+        }
+
+        .table-create-guide {
+          margin-top: 2rem;
+          padding-top: 1.5rem;
+          border-top: 1px solid #e2e8f0;
+          text-align: left;
+        }
+
+        .table-create-guide h4 {
+          color: #4a5568;
+          margin-bottom: 0.5rem;
+        }
+
+        .table-create-guide p {
+          color: #718096;
+          margin-bottom: 1rem;
+        }
+
+        .action-buttons {
+          display: flex;
+          gap: 0.5rem;
+          justify-content: flex-end;
+        }
+
+        .btn-edit,
+        .btn-delete {
+          padding: 0.25rem 0.75rem;
+          border-radius: 0.375rem;
+          font-size: 0.875rem;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .btn-edit {
+          background: #4299e1;
+          color: white;
+          border: none;
+        }
+
+        .btn-edit:hover {
+          background: #3182ce;
+        }
+
+        .btn-delete {
+          background: #f56565;
+          color: white;
+          border: none;
+        }
+
+        .btn-delete:hover {
+          background: #e53e3e;
+        }
+
+        .btn-delete:disabled {
+          background: #cbd5e0;
+          cursor: not-allowed;
+        }
+      `}</style>
     </div>
   );
 } 

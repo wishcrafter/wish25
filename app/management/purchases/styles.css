@@ -1,0 +1,117 @@
+.purchases-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.date-filters {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.select-wrapper {
+  position: relative;
+}
+
+.year-select,
+.month-select {
+  padding: 0.5rem 2rem 0.5rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.375rem;
+  background: white;
+  color: #4a5568;
+  font-size: 0.875rem;
+  cursor: pointer;
+  appearance: none;
+  min-width: 100px;
+}
+
+.select-wrapper::after {
+  content: '';
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid #4a5568;
+  pointer-events: none;
+}
+
+.summary-section {
+  margin: 20px 0;
+}
+
+.summary-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.store-total-card {
+  background: #f8fafc;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+.store-total-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+  border-color: #3182ce;
+  background: white;
+}
+
+.store-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1e40af;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: center;
+}
+
+.store-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: relative;
+  flex: 1;
+  min-height: 120px;
+}
+
+.amount-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  line-height: 1.2;
+  padding: 2px 0;
+}
+
+.amount-label {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.amount-value {
+  color: #334155;
+  font-weight: 600;
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
+}

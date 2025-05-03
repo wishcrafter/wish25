@@ -21,7 +21,7 @@ interface VendorData {
   vendor_name: string;
   store_id: number;
   category: string;
-  order: number;
+  sort_order: number;
 }
 
 // 매장 데이터 인터페이스
@@ -134,13 +134,13 @@ export default function ExpensesContent({
   const fetchVendors = async () => {
     try {
       const response = await fetchData('vendors', {
-        select: 'id, vendor_name, store_id, category, order',
+        select: 'id, vendor_name, store_id, category, sort_order',
         filters: {
           neq: {
             'category': '매입'
           }
         },
-        orderBy: 'store_id, order'
+        orderBy: 'store_id, sort_order'
       });
 
       if (!response.success) {
@@ -291,44 +291,37 @@ export default function ExpensesContent({
     setIsSaving(true);
     
     try {
-      const updates = [];
       const year = parseInt(selectedYear);
       const month = parseInt(selectedMonth);
-      
-      // 편집된 비용 처리
       for (const key in editedExpenses) {
         const [storeId, vendorId] = key.split('-').map(Number);
         const amount = editedExpenses[key];
-        
-        // 해당 연/월/점포/거래처에 해당하는 기존 비용 데이터 찾기
-        const existingExpense = expenses.find(e => 
-          e.store_id === storeId && 
-          e.vendor_id === vendorId &&
-          e.year === year &&
-          e.month === month
-        );
-        
-        if (existingExpense) {
-          // 기존 데이터 업데이트
-          updates.push(updateExpense(existingExpense.id, amount));
+        // 실제 DB에서 row 존재 여부 확인
+        const res = await fetchData('expenses', {
+          filters: { eq: { store_id: storeId, vendor_id: vendorId, year, month } }
+        });
+        console.log('[fetchData] 기존 row 존재 여부:', res);
+        if (res.success && res.data && res.data.length > 0) {
+          // 기존 데이터 업데이트 (id만 사용)
+          await updateExpense(res.data[0].id, amount);
         } else {
           // 새로운 데이터 생성
-          updates.push(createExpense(storeId, vendorId, amount));
+          const insertResult = await createExpense(storeId, vendorId, amount);
+          console.log('[createExpense] 결과:', insertResult);
         }
       }
-      
-      // 모든 업데이트 동시에 처리
-      await Promise.all(updates);
-      
-      // 성공 메시지
-      alert('비용 데이터가 성공적으로 저장되었습니다.');
-      
-      // 변경 상태 초기화
+      // 저장 후 fetchExpenses로 최신 데이터 반영
+      const fetchResult = await fetchExpenses();
+      console.log('[fetchExpenses] 결과:', fetchResult);
+      // 저장 후 expenses 상태를 콘솔로 출력
+      setTimeout(() => {
+        console.log('[expenses 상태 after 저장]', expenses);
+      }, 500);
       setHasChanges(false);
-      
+      window.location.reload(); // 테스트용: 저장 후 강제 새로고침(실제 배포 전에는 주석 처리)
       return true;
     } catch (error: any) {
-      alert(`비용 데이터 저장 중 오류가 발생했습니다: ${error.message}`);
+      window.alert(`비용 데이터 저장 중 오류가 발생했습니다: ${error.message}`);
       return false;
     } finally {
       setIsSaving(false);
@@ -337,6 +330,7 @@ export default function ExpensesContent({
 
   // 비용 업데이트 함수
   const updateExpense = async (expenseId: number, amount: number) => {
+    console.log('[updateExpense 호출] id:', expenseId, 'amount:', amount);
     return updateData('expenses', { id: expenseId }, { amount });
   };
 

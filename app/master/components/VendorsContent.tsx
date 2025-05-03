@@ -7,7 +7,7 @@ interface VendorData {
   id: number;
   store_id: number;
   category: string;
-  order: number;
+  sort_order: number;
   vendor_name: string;
   bank_account: string;
   business_number: string;
@@ -40,7 +40,7 @@ const emptyVendorData: VendorData[] = [
     id: 0,
     store_id: 0,
     category: '',
-    order: 0,
+    sort_order: 0,
     vendor_name: '',
     bank_account: '',
     business_number: ''
@@ -76,14 +76,14 @@ export default function VendorsContent() {
         // 데이터 설정
         setStores(storesResponse.data || []);
         
-        // 매입을 먼저, 나머지는 order로 정렬
+        // 매입을 먼저, 나머지는 sort_order로 정렬
         const sortedVendors = vendorsResponse.data ? vendorsResponse.data.sort((a: VendorData, b: VendorData) => {
           if (a.store_id !== b.store_id) {
             return a.store_id - b.store_id;
           }
           if (a.category === '매입' && b.category !== '매입') return -1;
           if (a.category !== '매입' && b.category === '매입') return 1;
-          return a.order - b.order;
+          return (a.sort_order ?? 0) - (b.sort_order ?? 0);
         }) : [];
         
         // 데이터가 있으면 설정, 없으면 빈 데이터 샘플 사용

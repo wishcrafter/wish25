@@ -36,6 +36,12 @@
       "static/chunks/_app-pages-browser_app_management_wstudio_components_WStudioContent_tsx.js"
     ]
   },
+  "app\\master\\vendors\\page.tsx -> ../components/VendorsContent": {
+    "id": "app\\master\\vendors\\page.tsx -> ../components/VendorsContent",
+    "files": [
+      "static/chunks/_app-pages-browser_app_master_components_VendorsContent_tsx.js"
+    ]
+  },
   "node_modules\\@supabase\\auth-js\\dist\\module\\lib\\helpers.js -> @supabase/node-fetch": {
     "id": "node_modules\\@supabase\\auth-js\\dist\\module\\lib\\helpers.js -> @supabase/node-fetch",
     "files": []

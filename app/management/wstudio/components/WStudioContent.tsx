@@ -262,7 +262,7 @@ export default function WStudioContent(props: WStudioContentProps) {
         const numValue = Number(value);
         if (!isNaN(numValue)) {
           processedValue = numValue;
-        } else {
+    } else {
           return; // 유효하지 않은 숫자는 무시
         }
       }
