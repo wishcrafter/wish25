@@ -1,486 +1,274 @@
 'use client';
 
-import { useEffect, useState, Dispatch, SetStateAction } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/utils/supabase';
-import { CustomerData, NewCustomerInput } from '@/types/types';
-import CreateCustomerTable from './CreateCustomerTable';
-import DirectSQL from './DirectSQL';
+import SimpleModal from './SimpleModal';
 import CustomerDetailModal from './CustomerDetailModal';
 
 interface WCustomerContentProps {
   statusFilter: string;
+  onStatusFilterChange?: (status: string) => void;
   onCustomerCreated: () => void;
-  onLoadingChange: Dispatch<SetStateAction<boolean>>;
-  onErrorChange: Dispatch<SetStateAction<string | null>>;
+  onLoadingChange: (loading: boolean) => void;
+  onErrorChange: (error: string | null) => void;
 }
 
-const columnMapping: { [key: string]: string } = {
-  room_no: '방 번호',
-  name: '고객명',
-  deposit: '보증금',
-  monthly_fee: '월 이용료',
-  move_in_date: '입주일',
-  move_out_date: '퇴실일',
-  status: '상태'
-};
+interface CustomerData {
+  id: number;
+  room_no: number | null;
+  name: string;
+  deposit: number;
+  monthly_fee: number;
+  first_fee: number;
+  move_in_date: string | null;
+  move_out_date: string | null;
+  status: string;
+  memo: string;
+  resident_id: string;
+  phone: string;
+  phone_sub: string;
+  address: string;
+  created_at?: string;
+  updated_at?: string;
+}
 
-// 모달에서 표시할 모든 컬럼 매핑
-const fullColumnMapping: { [key: string]: string } = {
-  ...columnMapping,
-  first_fee: '초기 비용',
-  memo: '메모',
-  resident_id: '주민등록번호',
-  phone: '연락처',
-  phone_sub: '추가 연락처',
-  address: '주소'
-};
-
-// 컬럼별 스타일 매핑
-const columnStyles: { [key: string]: string } = {
-  room_no: 'col-number text-center',
-  name: 'col-name',
-  deposit: 'col-price',
-  monthly_fee: 'col-price',
-  first_fee: 'col-price',
-  move_in_date: 'col-date',
-  move_out_date: 'col-date',
-  status: 'col-status',
-  memo: 'col-text',
-  phone: 'col-text',
-  phone_sub: 'col-text',
-  resident_id: 'col-text',
-  address: 'col-text'
-};
-
-export default function WCustomerContent({ statusFilter, onCustomerCreated, onLoadingChange, onErrorChange }: WCustomerContentProps) {
+export default function WCustomerContent({ 
+  statusFilter, 
+  onCustomerCreated, 
+  onLoadingChange, 
+  onErrorChange 
+}: WCustomerContentProps) {
   const [customers, setCustomers] = useState<CustomerData[]>([]);
-  const [filteredCustomers, setFilteredCustomers] = useState<CustomerData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [tableNotFound, setTableNotFound] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<CustomerData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [showDetail, setShowDetail] = useState<number | null>(null);
+  
+  // 등록 모달 관련 상태 추가
   const [modalOpen, setModalOpen] = useState(false);
+  const [selectedRoomNo, setSelectedRoomNo] = useState<number | undefined>(undefined);
+  
+  // 상세 정보 모달 관련 상태
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerData | null>(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
 
-  useEffect(() => {
-    fetchCustomers();
-  }, []);
+  // 모달 열기 함수
+  const openModal = (roomNo?: number) => {
+    setSelectedRoomNo(roomNo);
+    setModalOpen(true);
+  };
 
-  // 상태 필터링 적용
-  useEffect(() => {
-    if (statusFilter === '전체') {
-      setFilteredCustomers(customers);
-    } else {
-      setFilteredCustomers(customers.filter(customer => customer.status === statusFilter));
-    }
-  }, [statusFilter, customers]);
+  // 고객 생성 완료 핸들러
+  const handleCustomerCreated = () => {
+    setModalOpen(false);
+    loadCustomers();
+    onCustomerCreated();
+  };
 
-  // 고객 등록 후 목록 갱신을 위한 함수
-  useEffect(() => {
-    // onCustomerCreated가 호출되었을 때 새로고침
-    fetchCustomers();
-  }, [onCustomerCreated]);
-
-  // 부모 컴포넌트에 로딩 상태 전달
-  useEffect(() => {
-    onLoadingChange?.(loading);
-  }, [loading, onLoadingChange]);
-
-  // 부모 컴포넌트에 에러 상태 전달
-  useEffect(() => {
-    onErrorChange?.(error);
-  }, [error, onErrorChange]);
-
-  async function fetchCustomers() {
+  // 간단한 데이터 로딩 함수
+  const loadCustomers = async () => {
     try {
-      setLoading(true);
-      
-      // 먼저 '입주중' 상태를 '입실'로 업데이트
-      try {
-        const { error: updateError } = await supabase
-          .from('w_customers')
-          .update({ status: '입실' })
-          .eq('status', '입주중');
-          
-        if (updateError && !updateError.message.includes('does not exist')) {
-          console.error('상태 업데이트 중 오류:', updateError);
-        }
-      } catch (updateErr) {
-        console.error('상태 업데이트 시도 중 오류:', updateErr);
-      }
-      
+      // 로딩 상태 업데이트하지 않고 바로 데이터 조회 (게이지 제거)
       const { data, error } = await supabase
         .from('w_customers')
         .select('*')
         .order('room_no', { ascending: true });
 
-      if (error) {
-        // 테이블이 존재하지 않는 경우 특별 처리
-        if (error.message.includes('does not exist') || error.message.includes('relation "public.w_customers"')) {
-          setTableNotFound(true);
-          console.error('w_customers 테이블이 존재하지 않습니다:', error);
-        } else {
-          console.error('Error fetching W스튜디오 고객 정보:', error);
-        }
-        throw error;
-      }
-
-      setCustomers(data || []);
-      // 초기 필터링 적용
-      if (statusFilter === '전체') {
-        setFilteredCustomers(data || []);
-      } else {
-        setFilteredCustomers((data || []).filter(customer => customer.status === statusFilter));
-      }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // 금액을 원화 형식으로 포맷팅
-  const formatPrice = (price: number) => {
-    return price ? price.toLocaleString('ko-KR') + '원' : '-';
-  };
-
-  // 날짜 포맷팅
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('ko-KR', { 
-      year: 'numeric', 
-      month: '2-digit', 
-      day: '2-digit' 
-    });
-  };
-
-  // 상태에 따른 클래스 부여
-  const getStatusClass = (status: string) => {
-    switch(status?.toLowerCase()) {
-      case '입실':
-        return 'status-active';
-      case '퇴실':
-        return 'status-inactive';
-      case '예약':
-        return 'status-pending';
-      default:
-        return '';
-    }
-  };
-
-  // 상세보기 모달 열기
-  const openCustomerDetail = (customer: CustomerData) => {
-    setSelectedCustomer(customer);
-    setModalOpen(true);
-  };
-
-  // 고객 정보 업데이트 핸들러
-  const handleCustomerUpdate = async (updatedCustomer: CustomerData) => {
-    try {
-      const { error } = await supabase
-        .from('w_customers')
-        .update({
-          room_no: updatedCustomer.room_no,
-          name: updatedCustomer.name,
-          deposit: updatedCustomer.deposit,
-          monthly_fee: updatedCustomer.monthly_fee,
-          first_fee: updatedCustomer.first_fee,
-          move_in_date: updatedCustomer.move_in_date,
-          move_out_date: updatedCustomer.move_out_date,
-          status: updatedCustomer.status,
-          memo: updatedCustomer.memo,
-          resident_id: updatedCustomer.resident_id,
-          phone: updatedCustomer.phone,
-          phone_sub: updatedCustomer.phone_sub,
-          address: updatedCustomer.address,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', updatedCustomer.id);
-      
       if (error) throw error;
       
-      // 고객 목록 업데이트
-      const updatedCustomers = customers.map(c => 
-        c.id === updatedCustomer.id ? updatedCustomer : c
-      );
-      setCustomers(updatedCustomers);
-      
-      // 필터링된 목록도 업데이트
-      if (statusFilter === '전체') {
-        setFilteredCustomers(updatedCustomers);
-      } else {
-        setFilteredCustomers(updatedCustomers.filter(c => c.status === statusFilter));
-      }
-      
-      // 모달 닫기
-      setModalOpen(false);
+      setCustomers(data || []);
     } catch (err: any) {
-      console.error('고객 정보 업데이트 중 오류:', err);
-      alert(`고객 정보 업데이트 실패: ${err.message}`);
+      console.error('데이터 로딩 오류:', err.message);
+      onErrorChange(err.message);
     }
   };
 
-  if (loading && customers.length === 0) {
-    return null;
-  }
+  // 방 번호별 고객 데이터 매핑
+  const roomCustomerMap = useMemo(() => {
+    const map: Record<number, CustomerData | null> = {};
+    
+    // 모든 방을 null로 초기화
+    for (let i = 1; i <= 15; i++) {
+      map[i] = null;
+    }
+    
+    // 입실 상태인 고객만 매핑
+    const activeCustomers = customers.filter(c => c.status === '입실');
+    activeCustomers.forEach(customer => {
+      if (customer.room_no !== null && customer.room_no >= 1 && customer.room_no <= 15) {
+        map[customer.room_no] = customer;
+      }
+    });
+    
+    return map;
+  }, [customers]);
 
-  if (tableNotFound) {
-    return (
-      <div className="error-state table-not-found">
-        <h3>테이블이 존재하지 않습니다</h3>
-        <p>Supabase에 'w_customers' 테이블을 생성해야 합니다.</p>
-        
-        <CreateCustomerTable 
-          onClose={() => window.location.reload()}
-          onTableCreated={() => {
-            setTableNotFound(false);
-            fetchCustomers();
-          }}
-        />
-        
-        <DirectSQL 
-          onClose={() => window.location.reload()}
-          onSuccess={() => {
-            setTableNotFound(false);
-            fetchCustomers();
-          }}
-        />
-        
-        <div className="table-create-guide">
-          <h4>테이블 수동 생성 가이드:</h4>
-          <p>자동 생성이 작동하지 않는 경우 아래 단계에 따라 수동으로 테이블을 생성하세요:</p>
-          <ol>
-            <li>Supabase 대시보드에 로그인합니다.</li>
-            <li>프로젝트 &gt; 데이터베이스 &gt; 테이블로 이동합니다.</li>
-            <li>'새 테이블 만들기' 버튼을 클릭합니다.</li>
-            <li>테이블 이름: <code>w_customers</code>를 입력합니다.</li>
-            <li>다음 컬럼들을 추가합니다:
-              <ul>
-                <li>id (int4, primary key)</li>
-                <li>room_no (int4)</li>
-                <li>name (varchar)</li>
-                <li>deposit (int4)</li>
-                <li>monthly_fee (int4)</li>
-                <li>first_fee (int4)</li>
-                <li>move_in_date (date)</li>
-                <li>move_out_date (date)</li>
-                <li>status (varchar)</li>
-                <li>memo (text)</li>
-                <li>resident_id (varchar)</li>
-                <li>phone (varchar)</li>
-                <li>phone_sub (varchar)</li>
-                <li>address (varchar)</li>
-                <li>created_at (timestamp with time zone, default: now())</li>
-                <li>updated_at (timestamp with time zone, default: now())</li>
-              </ul>
-            </li>
-            <li>'저장' 버튼을 클릭하여 테이블을 생성합니다.</li>
-          </ol>
-        </div>
-      </div>
-    );
-  }
+  // 컴포넌트 마운트 시 로드
+  useEffect(() => {
+    loadCustomers();
+  }, []);
 
-  if (error) {
-    return null;
-  }
+  // 고객 등록 후 새로고침
+  useEffect(() => {
+    loadCustomers();
+  }, [onCustomerCreated]);
+
+  // 날짜 포맷팅
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return '-';
+    return new Date(dateStr).toLocaleDateString('ko-KR');
+  };
+
+  // 금액 포맷팅
+  const formatPrice = (amount: number) => {
+    return amount.toLocaleString('ko-KR') + '원';
+  };
+
+  // 상태별 스타일
+  const getStatusStyle = (status: string) => {
+    switch (status) {
+      case '입실':
+        return 'bg-green-100 text-green-800';
+      case '퇴실':
+        return 'bg-red-100 text-red-800';
+      case '예약':
+        return 'bg-yellow-100 text-yellow-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  // 필터링된 데이터 준비
+  const filteredData = useMemo(() => {
+    if (statusFilter === '입실') {
+      // 1~15번 방 모두 표시, 공실도 표시
+      const allRooms = [];
+      for (let i = 1; i <= 15; i++) {
+        const customer = roomCustomerMap[i];
+        allRooms.push({
+          roomNo: i,
+          customer: customer,
+          isOccupied: customer !== null
+        });
+      }
+      return allRooms;
+    } else {
+      // 다른 필터는 해당 상태의 고객만 표시
+      return statusFilter === '전체'
+        ? customers.map(c => ({ roomNo: c.room_no, customer: c, isOccupied: true }))
+        : customers
+            .filter(c => c.status === statusFilter)
+            .map(c => ({ roomNo: c.room_no, customer: c, isOccupied: true }));
+    }
+  }, [statusFilter, customers, roomCustomerMap]);
+
+  // 고객 상세 정보 열기
+  const openDetailModal = (customerId: number) => {
+    const customer = customers.find(c => c.id === customerId);
+    if (customer) {
+      setSelectedCustomer(customer);
+      setDetailModalOpen(true);
+    }
+  };
 
   return (
-    <div className="w-customer-content">
-      {filteredCustomers.length > 0 ? (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 bg-white shadow-sm rounded-lg">
-            <thead className="bg-gray-50">
-              <tr>
-                {Object.values(columnMapping).map((header, index) => (
-                  <th
-                    key={index}
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap"
-                  >
-                    {header}
-                  </th>
-                ))}
-                <th scope="col" className="relative px-6 py-3">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredCustomers.map((customer) => (
-                <tr key={customer.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{customer.room_no}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{customer.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatPrice(customer.deposit)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatPrice(customer.monthly_fee)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(customer.move_in_date)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(customer.move_out_date)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusClass(customer.status)}`}>
-                      {customer.status}
-                    </span>
+    <>
+      <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
+        <table className="min-w-full divide-y divide-gray-300">
+          <thead className="bg-gray-50">
+            <tr>
+              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">방번호</th>
+              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">이름</th>
+              <th scope="col" className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">보증금</th>
+              <th scope="col" className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">월세</th>
+              <th scope="col" className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900">입주일</th>
+              <th scope="col" className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900">퇴실일</th>
+              <th scope="col" className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900">상태</th>
+              <th scope="col" className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900">액션</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200 bg-white">
+            {filteredData.length > 0 ? (
+              filteredData.map((item, index) => (
+                <tr 
+                  key={item.isOccupied ? `customer-${item.customer?.id}` : `room-${item.roomNo}`}
+                  className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
+                >
+                  <td className="whitespace-nowrap px-3 py-2.5 text-sm font-medium text-gray-900">{item.roomNo || '-'}</td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-sm text-gray-900">
+                    {item.isOccupied ? item.customer?.name : <span className="italic text-gray-400">공실</span>}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={() => openCustomerDetail(customer)}
-                      className="text-blue-600 hover:text-blue-900 font-semibold"
-                    >
-                      상세보기
-                    </button>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-sm text-gray-500 text-right">
+                    {item.isOccupied ? formatPrice(item.customer?.deposit || 0) : '-'}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-sm text-gray-500 text-right">
+                    {item.isOccupied ? formatPrice(item.customer?.monthly_fee || 0) : '-'}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-sm text-gray-500 text-center">
+                    {item.isOccupied && item.customer ? formatDate(item.customer.move_in_date) : '-'}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-sm text-gray-500 text-center">
+                    {item.isOccupied && item.customer ? formatDate(item.customer.move_out_date) : '-'}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-center">
+                    {item.isOccupied ? (
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusStyle(item.customer?.status || '')}`}>
+                        {item.customer?.status}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        공실
+                      </span>
+                    )}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-center text-sm">
+                    {item.isOccupied ? (
+                      <button
+                        type="button"
+                        onClick={() => item.customer && openDetailModal(item.customer.id)}
+                        className="font-medium text-blue-600 hover:text-blue-900"
+                      >
+                        상세보기
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => openModal(item.roomNo as number)}
+                        className="font-medium text-green-600 hover:text-green-900"
+                      >
+                        등록하기
+                      </button>
+                    )}
                   </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <div className="empty-state">
-          {statusFilter === '전체' 
-            ? '등록된 고객이 없습니다.'
-            : `'${statusFilter}' 상태인 고객이 없습니다.`}
-        </div>
-      )}
+              ))
+            ) : (
+              <tr>
+                <td colSpan={8} className="py-8 text-center text-sm text-gray-500">
+                  {statusFilter === '전체' 
+                    ? '등록된 고객이 없습니다.' 
+                    : `'${statusFilter}' 상태인 고객이 없습니다.`}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
 
-      {modalOpen && selectedCustomer && (
+      {/* 등록 모달 */}
+      <SimpleModal 
+        isOpen={modalOpen} 
+        onClose={() => setModalOpen(false)} 
+        onCustomerCreated={handleCustomerCreated}
+        initialRoomNo={selectedRoomNo}
+      />
+
+      {/* 고객 상세 모달 */}
+      {selectedCustomer && (
         <CustomerDetailModal
+          isOpen={detailModalOpen}
+          onClose={() => setDetailModalOpen(false)}
           customer={selectedCustomer}
-          onClose={() => setModalOpen(false)}
-          onSave={handleCustomerUpdate}
-          columnMapping={fullColumnMapping}
-          columnStyles={columnStyles}
-          formatPrice={formatPrice}
-          formatDate={formatDate}
-          getStatusClass={getStatusClass}
         />
       )}
-
-      <style jsx>{`
-        .w-customer-content {
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
-        }
-
-        .customers-table {
-          background: white;
-          border-radius: 0.5rem;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-          overflow: hidden;
-        }
-
-        table {
-          width: 100%;
-          border-collapse: collapse;
-        }
-
-        th {
-          background: #f8fafc;
-          padding: 0.75rem 1rem;
-          text-align: left;
-          font-weight: 600;
-          color: #4a5568;
-          border-bottom: 1px solid #e2e8f0;
-        }
-
-        td {
-          padding: 0.75rem 1rem;
-          border-bottom: 1px solid #e2e8f0;
-        }
-
-        tr:last-child td {
-          border-bottom: none;
-        }
-
-        .empty-state {
-          padding: 2rem;
-          text-align: center;
-          color: #718096;
-        }
-
-        .error-state {
-          padding: 2rem;
-          text-align: center;
-          color: #e53e3e;
-          background: #fff5f5;
-          border-radius: 0.5rem;
-          margin-bottom: 1rem;
-        }
-
-        .table-not-found {
-          background: white;
-          padding: 2rem;
-          border-radius: 0.5rem;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-          text-align: center;
-        }
-
-        .table-not-found h3 {
-          color: #4a5568;
-          margin-bottom: 1rem;
-        }
-
-        .table-not-found p {
-          color: #718096;
-          margin-bottom: 1.5rem;
-        }
-
-        .table-create-guide {
-          margin-top: 2rem;
-          padding-top: 1.5rem;
-          border-top: 1px solid #e2e8f0;
-          text-align: left;
-        }
-
-        .table-create-guide h4 {
-          color: #4a5568;
-          margin-bottom: 0.5rem;
-        }
-
-        .table-create-guide p {
-          color: #718096;
-          margin-bottom: 1rem;
-        }
-
-        .action-buttons {
-          display: flex;
-          gap: 0.5rem;
-          justify-content: flex-end;
-        }
-
-        .btn-edit,
-        .btn-delete {
-          padding: 0.25rem 0.75rem;
-          border-radius: 0.375rem;
-          font-size: 0.875rem;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .btn-edit {
-          background: #4299e1;
-          color: white;
-          border: none;
-        }
-
-        .btn-edit:hover {
-          background: #3182ce;
-        }
-
-        .btn-delete {
-          background: #f56565;
-          color: white;
-          border: none;
-        }
-
-        .btn-delete:hover {
-          background: #e53e3e;
-        }
-
-        .btn-delete:disabled {
-          background: #cbd5e0;
-          cursor: not-allowed;
-        }
-      `}</style>
-    </div>
+    </>
   );
 } 
