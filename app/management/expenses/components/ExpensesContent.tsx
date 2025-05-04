@@ -229,20 +229,15 @@ export default function ExpensesContent({
     fetchAll();
   }, [fetchAll]);
 
-  // 입력값 변경을 안전하게 처리하는 함수 - 개선
+  // 입력값 변경 함수 - 단순화
   const handleAmountChange = useCallback((storeId: number, vendorId: number, value: string) => {
     const key = `${storeId}-${vendorId}`;
-    // 숫자만 추출 (콤마 제거)
-    const numOnly = value.replace(/[^0-9]/g, '');
     
-    console.log(`입력 변경 시도: ${storeId}-${vendorId}, 입력값: ${value}, 변환값: ${numOnly}`);
-    
-    // 입력값 업데이트
+    // 입력값 직접 업데이트 (복잡한 처리 없이)
     const updatedInputs = { ...inputsRef.current };
     
-    // 빈 값이 아닌 경우에만 저장
-    if (numOnly !== '') {
-      updatedInputs[key] = numOnly;
+    if (value.trim() !== '') {
+      updatedInputs[key] = value;
     } else {
       delete updatedInputs[key];
     }
@@ -251,11 +246,11 @@ export default function ExpensesContent({
     inputsRef.current = updatedInputs;
     setInputs({ ...updatedInputs });
     
-    console.log(`입력 변경 완료: ${key}, 최종값: ${updatedInputs[key]}, 총 입력값: ${Object.keys(updatedInputs).length}개`);
+    // 변경 상태 업데이트
     setHasChanges(Object.keys(updatedInputs).length > 0);
   }, []);
 
-  // 저장 로직 - 안정적으로 개선 (데이터 불일치 문제 해결)
+  // 저장 로직 - 단순화
   const handleSave = useCallback(async () => {
     if (Object.keys(inputsRef.current).length === 0) return;
     
@@ -267,18 +262,19 @@ export default function ExpensesContent({
       const currYear = selectedYear;
       const currMonth = selectedMonth;
       
-      console.log(`저장 중: ${currYear}년 ${currMonth}월 데이터, 총 ${Object.keys(inputsRef.current).length}개`);
-      
       // 입력값을 순차적으로 저장 (모든 key 순회)
       for (const key in inputsRef.current) {
         if (!inputsRef.current[key]) continue; // 빈 값 제외
         
         const [storeId, vendorId] = key.split('-').map(Number);
-        const amount = parseInt(inputsRef.current[key], 10);
+        
+        // 쉼표 제거하고 숫자로 변환
+        const numericValue = inputsRef.current[key].replace(/,/g, '').trim();
+        const amount = parseInt(numericValue, 10);
         
         if (isNaN(amount)) continue; // 유효하지 않은 숫자 제외
         
-        // 기존 데이터 확인 (정확한 매칭을 위해 로그 추가)
+        // 기존 데이터 확인
         const existingRecord = expensesAll.find(e => 
           e.store_id === storeId && 
           e.vendor_id === vendorId &&
@@ -286,24 +282,12 @@ export default function ExpensesContent({
           e.month === currMonth
         );
         
-        console.log(`저장 데이터 확인 - 매장: ${storeId}, 거래처: ${vendorId}, 금액: ${amount}원, 기존 데이터: ${existingRecord ? `ID ${existingRecord.id}, 금액 ${existingRecord.amount}` : '없음'}`);
-        
-        // 업데이트 또는 신규 등록 (디버깅 정보 추가)
+        // 업데이트 또는 신규 등록
         if (existingRecord) {
-          console.log(`업데이트: ID ${existingRecord.id}, 금액 ${amount}원`);
           savePromises.push(
             updateData('expenses', { id: existingRecord.id }, { amount })
-              .then(result => {
-                if (result.error) {
-                  console.error(`ID ${existingRecord.id} 업데이트 실패:`, result.error);
-                } else {
-                  console.log(`ID ${existingRecord.id} 업데이트 성공`);
-                }
-                return result;
-              })
           );
         } else {
-          console.log(`신규 등록: 연도 ${currYear}, 월 ${currMonth}, 매장 ${storeId}, 거래처 ${vendorId}, 금액 ${amount}원`);
           savePromises.push(
             insertData('expenses', {
               year: currYear,
@@ -311,21 +295,13 @@ export default function ExpensesContent({
               store_id: storeId,
               vendor_id: vendorId,
               amount
-            }).then(result => {
-              if (result.error) {
-                console.error(`신규 데이터 저장 실패:`, result.error);
-              } else {
-                console.log(`신규 데이터 저장 성공, ID: ${result.data?.id}`);
-              }
-              return result;
             })
           );
         }
       }
       
       // 모든 요청을 Promise.all로 병렬 처리
-      const results = await Promise.all(savePromises);
-      console.log(`총 ${results.length}개 데이터 저장 완료`);
+      await Promise.all(savePromises);
       
       // 변경 사항 초기화 및 데이터 새로고침
       inputsRef.current = {};
@@ -573,16 +549,12 @@ export default function ExpensesContent({
               if (isCurrentMonth) {
                 const key = `${store.store_id}-${vendor.id}`;
                 
-                // 입력값 가져오기 (현재 입력 상태에서 확인)
+                // 입력값 또는 DB 값 표시
                 const inputValue = inputs[key] || '';
                 
                 // DB에 저장된 기존 금액 (없으면 0)
                 const dbExpense = getCurrentMonthExpense(store.store_id, vendor.id);
                 const dbAmount = dbExpense?.amount || 0;
-                
-                // 표시 값 설정 - 입력 중이면 입력값, 아니면 빈 값
-                const displayValue = inputValue;
-                const placeholderValue = dbAmount ? dbAmount.toLocaleString('ko-KR') : '0';
                 
                 return (
                   <div key={vendor.id} className="amount-row vendor">
@@ -591,12 +563,10 @@ export default function ExpensesContent({
                       <input
                         type="text"
                         className="amount-input"
-                        value={displayValue}
-                        placeholder={placeholderValue}
+                        value={inputValue}
+                        placeholder={dbAmount ? dbAmount.toLocaleString('ko-KR') : '0'}
                         onChange={(e) => handleAmountChange(store.store_id, vendor.id, e.target.value)}
                         onFocus={(e) => e.target.select()}
-                        onClick={(e) => e.currentTarget.select()}
-                        inputMode="numeric"
                       />
                       <span className="amount-unit">원</span>
                     </div>
