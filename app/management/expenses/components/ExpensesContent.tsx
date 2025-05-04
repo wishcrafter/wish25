@@ -73,26 +73,36 @@ export default function ExpensesContent({
     setHasChanges(false);
   }, [selectedYear, selectedMonth]);
 
-  // 데이터 변경 감지 (단순화)
+  // 초기 렌더링 시 editData 초기화 설정 (uncontrolled->controlled 전환 방지)
   useEffect(() => {
-    setHasChanges(Object.keys(editData).length > 0);
+    // 처음부터 빈 객체가 아닌 필요한 키를 모두 빈 문자열로 초기화
+    const initialEditData: { [key: string]: string } = {};
+    
+    // 현재 월에 해당하는 모든 항목에 대해 빈 문자열로 초기화
+    vendors.forEach(vendor => {
+      stores.forEach(store => {
+        if (vendor.store_id === store.store_id) {
+          const key = `${store.store_id}-${vendor.id}`;
+          initialEditData[key] = '';
+        }
+      });
+    });
+    
+    setEditData(initialEditData);
+  }, [vendors, stores, selectedYear, selectedMonth]);
+
+  // 데이터 변경 감지 (편집된 데이터만 추적)
+  useEffect(() => {
+    const hasEdits = Object.values(editData).some(value => value !== '');
+    setHasChanges(hasEdits);
   }, [editData]);
 
-  // 입력 처리 함수 - 완전히 새로 작성
+  // 입력 처리 함수 - 완전 재작성
   const handleAmountChange = useCallback((storeId: number, vendorId: number, value: string) => {
-    // 입력값 직접 저장 (아무 변환 없이)
+    // 입력값을 직접 저장 (아무 변환 없이)
     setEditData(prev => {
       const key = `${storeId}-${vendorId}`;
-      
-      // 입력값이 있는 경우에만 상태에 추가
-      if (value.trim() !== '') {
-        return { ...prev, [key]: value };
-      } 
-      
-      // 입력값이 없으면 해당 키 제거
-      const newState = { ...prev };
-      delete newState[key];
-      return newState;
+      return { ...prev, [key]: value };
     });
   }, []);
 
@@ -250,9 +260,14 @@ export default function ExpensesContent({
     fetchAll();
   }, [fetchAll]);
 
-  // 저장 함수 - 완전히 새로 작성
+  // 저장 함수 - 수정
   const handleSave = useCallback(async () => {
-    if (Object.keys(editData).length === 0) {
+    // 실제 수정된 데이터만 걸러냄
+    const modifiedData = Object.entries(editData).filter(([key, value]) => 
+      value.trim() !== '' // 빈 값은 무시
+    );
+    
+    if (modifiedData.length === 0) {
       return; // 변경사항 없으면 종료
     }
     
@@ -262,14 +277,14 @@ export default function ExpensesContent({
     try {
       const promises = [];
       
-      // 편집 데이터만 처리
-      for (const key in editData) {
+      // 편집 데이터 처리
+      for (const [key, value] of modifiedData) {
         const [storeId, vendorId] = key.split('-').map(Number);
-        const amountStr = editData[key].replace(/,/g, '').trim(); // 쉼표 제거
+        const amountStr = value.replace(/,/g, '').trim(); // 쉼표 제거
         const amount = Number(amountStr);
         
         if (isNaN(amount) || amount < 0) {
-          console.error(`유효하지 않은 금액: ${editData[key]}`);
+          console.error(`유효하지 않은 금액: ${value}`);
           continue;
         }
         
@@ -306,9 +321,17 @@ export default function ExpensesContent({
       await Promise.all(promises);
       console.log(`${selectedYear}년 ${selectedMonth}월 데이터 저장 완료: ${promises.length}개 항목`);
       
-      // 상태 초기화 및 데이터 새로고침
-      setEditData({});
+      // 데이터 새로고침 (편집 데이터는 초기화하지 않고 빈 값으로 유지)
       await fetchAll();
+      
+      // 편집된 값들을 빈 문자열로 재설정
+      setEditData(prev => {
+        const resetData = { ...prev };
+        Object.keys(resetData).forEach(key => {
+          resetData[key] = '';
+        });
+        return resetData;
+      });
       
     } catch (error) {
       console.error('저장 중 오류:', error);
@@ -561,7 +584,7 @@ export default function ExpensesContent({
                 const dbExpense = getCurrentMonthExpense(store.store_id, vendor.id);
                 const dbAmount = dbExpense?.amount || 0;
                 
-                // 편집 중인 값 또는 빈 문자열
+                // 편집 중인 값 또는 빈 문자열 (null/undefined 피하기)
                 const editValue = editData[key] || '';
                 
                 return (
@@ -571,7 +594,7 @@ export default function ExpensesContent({
                       <input
                         type="text"
                         className="amount-input"
-                        value={editValue}
+                        value={editValue} 
                         placeholder={dbAmount ? dbAmount.toLocaleString('ko-KR') : '0'}
                         onChange={(e) => handleAmountChange(store.store_id, vendor.id, e.target.value)}
                       />
