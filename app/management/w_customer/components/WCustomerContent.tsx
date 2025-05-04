@@ -171,18 +171,18 @@ export default function WCustomerContent({
 
   return (
     <>
-      <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
-        <table className="min-w-full divide-y divide-gray-300">
+      <div className="data-table-container overflow-hidden bg-white rounded-lg shadow ring-1 ring-black ring-opacity-5">
+        <table className="data-table min-w-full divide-y divide-gray-300">
           <thead className="bg-gray-50">
             <tr>
-              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">방번호</th>
-              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">이름</th>
-              <th scope="col" className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">보증금</th>
-              <th scope="col" className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">월세</th>
-              <th scope="col" className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900">입주일</th>
-              <th scope="col" className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900">퇴실일</th>
-              <th scope="col" className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900">상태</th>
-              <th scope="col" className="px-3 py-3.5 text-center text-sm font-semibold text-gray-900">액션</th>
+              <th scope="col" className="col-number py-3.5 px-4 text-left text-sm font-semibold text-gray-900">방번호</th>
+              <th scope="col" className="col-name py-3.5 px-4 text-left text-sm font-semibold text-gray-900">이름</th>
+              <th scope="col" className="col-price py-3.5 px-4 text-right text-sm font-semibold text-gray-900">보증금</th>
+              <th scope="col" className="col-price py-3.5 px-4 text-right text-sm font-semibold text-gray-900">월세</th>
+              <th scope="col" className="col-date py-3.5 px-4 text-center text-sm font-semibold text-gray-900">입주일</th>
+              <th scope="col" className="col-date py-3.5 px-4 text-center text-sm font-semibold text-gray-900">퇴실일</th>
+              <th scope="col" className="col-status py-3.5 px-4 text-center text-sm font-semibold text-gray-900">상태</th>
+              <th scope="col" className="col-action py-3.5 px-4 text-center text-sm font-semibold text-gray-900">액션</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
@@ -190,25 +190,31 @@ export default function WCustomerContent({
               filteredData.map((item, index) => (
                 <tr 
                   key={item.isOccupied ? `customer-${item.customer?.id}` : `room-${item.roomNo}`}
-                  className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
+                  className={index % 2 === 0 ? 'bg-white hover:bg-blue-50' : 'bg-gray-50 hover:bg-blue-50'}
                 >
-                  <td className="whitespace-nowrap px-3 py-2.5 text-sm font-medium text-gray-900">{item.roomNo || '-'}</td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-sm text-gray-900">
-                    {item.isOccupied ? item.customer?.name : <span className="italic text-gray-400">공실</span>}
+                  <td className="col-number whitespace-nowrap py-3 px-4 text-sm font-medium text-gray-900">
+                    <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-md">{item.roomNo || '-'}</span>
                   </td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-sm text-gray-500 text-right">
+                  <td className="col-name whitespace-nowrap py-3 px-4 text-sm text-gray-900">
+                    {item.isOccupied ? (
+                      <span className="font-medium">{item.customer?.name}</span>
+                    ) : (
+                      <span className="italic text-gray-400">공실</span>
+                    )}
+                  </td>
+                  <td className="col-price whitespace-nowrap py-3 px-4 text-sm text-gray-500 text-right">
                     {item.isOccupied ? formatPrice(item.customer?.deposit || 0) : '-'}
                   </td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-sm text-gray-500 text-right">
+                  <td className="col-price whitespace-nowrap py-3 px-4 text-sm text-gray-500 text-right">
                     {item.isOccupied ? formatPrice(item.customer?.monthly_fee || 0) : '-'}
                   </td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-sm text-gray-500 text-center">
+                  <td className="col-date whitespace-nowrap py-3 px-4 text-sm text-gray-500 text-center">
                     {item.isOccupied && item.customer ? formatDate(item.customer.move_in_date) : '-'}
                   </td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-sm text-gray-500 text-center">
+                  <td className="col-date whitespace-nowrap py-3 px-4 text-sm text-gray-500 text-center">
                     {item.isOccupied && item.customer ? formatDate(item.customer.move_out_date) : '-'}
                   </td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-center">
+                  <td className="col-status whitespace-nowrap py-3 px-4 text-center">
                     {item.isOccupied ? (
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusStyle(item.customer?.status || '')}`}>
                         {item.customer?.status}
@@ -219,21 +225,28 @@ export default function WCustomerContent({
                       </span>
                     )}
                   </td>
-                  <td className="whitespace-nowrap px-3 py-2.5 text-center text-sm">
+                  <td className="col-action whitespace-nowrap py-3 px-4 text-center text-sm">
                     {item.isOccupied ? (
                       <button
                         type="button"
                         onClick={() => item.customer && openDetailModal(item.customer.id)}
-                        className="font-medium text-blue-600 hover:text-blue-900"
+                        className="btn-sm inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                       >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                          <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                          <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                        </svg>
                         상세보기
                       </button>
                     ) : (
                       <button
                         type="button"
                         onClick={() => openModal(item.roomNo as number)}
-                        className="font-medium text-green-600 hover:text-green-900"
+                        className="btn-sm inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
                       >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10 3a1 1 0 00-1 1v5H4a1 1 0 100 2h5v5a1 1 0 102 0v-5h5a1 1 0 100-2h-5V4a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
                         등록하기
                       </button>
                     )}
@@ -242,10 +255,18 @@ export default function WCustomerContent({
               ))
             ) : (
               <tr>
-                <td colSpan={8} className="py-8 text-center text-sm text-gray-500">
-                  {statusFilter === '전체' 
-                    ? '등록된 고객이 없습니다.' 
-                    : `'${statusFilter}' 상태인 고객이 없습니다.`}
+                <td colSpan={8} className="empty-state py-8 text-center text-sm text-gray-500">
+                  <div className="flex flex-col items-center justify-center p-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="text-gray-700 font-medium mb-1">데이터가 없습니다</p>
+                    <p>
+                      {statusFilter === '전체' 
+                        ? '등록된 고객이 없습니다.' 
+                        : `'${statusFilter}' 상태인 고객이 없습니다.`}
+                    </p>
+                  </div>
                 </td>
               </tr>
             )}
