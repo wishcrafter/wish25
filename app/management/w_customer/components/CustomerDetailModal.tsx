@@ -29,7 +29,7 @@ interface CustomerDetailModalProps {
 
 export default function CustomerDetailModal({ isOpen, onClose, customer, onCustomerUpdated }: CustomerDetailModalProps) {
   const [loading, setLoading] = useState(false);
-  const [editedCustomer, setEditedCustomer] = useState<CustomerProps>({...customer});
+  const [editedCustomer, setEditedCustomer] = useState<CustomerProps | null>(null);
   
   // 고객 정보가 바뀌면 편집 정보도 업데이트
   useEffect(() => {
@@ -40,6 +40,8 @@ export default function CustomerDetailModal({ isOpen, onClose, customer, onCusto
 
   // 금액 입력 시 자동 콤마 추가
   const handleDepositChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!editedCustomer) return;
+    
     const value = e.target.value.replace(/[^\d]/g, '');
     setEditedCustomer({
       ...editedCustomer, 
@@ -48,6 +50,8 @@ export default function CustomerDetailModal({ isOpen, onClose, customer, onCusto
   };
 
   const handleMonthlyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!editedCustomer) return;
+    
     const value = e.target.value.replace(/[^\d]/g, '');
     setEditedCustomer({
       ...editedCustomer, 
@@ -56,6 +60,8 @@ export default function CustomerDetailModal({ isOpen, onClose, customer, onCusto
   };
   
   const handleFirstFeeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!editedCustomer) return;
+    
     const value = e.target.value.replace(/[^\d]/g, '');
     setEditedCustomer({
       ...editedCustomer, 
@@ -65,6 +71,8 @@ export default function CustomerDetailModal({ isOpen, onClose, customer, onCusto
 
   // 입력 값 변경 핸들러
   const handleInputChange = (field: keyof CustomerProps, value: any) => {
+    if (!editedCustomer) return;
+    
     setEditedCustomer({
       ...editedCustomer,
       [field]: value
@@ -74,6 +82,8 @@ export default function CustomerDetailModal({ isOpen, onClose, customer, onCusto
   // 수정 내용 저장
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!editedCustomer || !customer) return;
+    
     setLoading(true);
     
     try {
@@ -114,17 +124,18 @@ export default function CustomerDetailModal({ isOpen, onClose, customer, onCusto
   };
 
   // 금액 포맷팅
-  const formatPrice = (amount: number) => {
+  const formatPrice = (amount: number | undefined) => {
+    if (amount === undefined || amount === null) return '0';
     return amount.toLocaleString('ko-KR');
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !customer || !editedCustomer) return null;
 
   return (
     <div className="modal-backdrop">
       <div className="modal-content">
         <div className="modal-header">
-          <h2>{customer.room_no}호 {customer.name} 정보 수정</h2>
+          <h2>{customer.room_no || ''}호 {customer.name} 정보 수정</h2>
           <button
             className="modal-close"
             onClick={onClose}
@@ -139,7 +150,7 @@ export default function CustomerDetailModal({ isOpen, onClose, customer, onCusto
                 <label>이름 *</label>
                 <input 
                   type="text" 
-                  value={editedCustomer.name}
+                  value={editedCustomer.name || ''}
                   onChange={(e) => handleInputChange('name', e.target.value)}
                   required
                 />
@@ -190,7 +201,7 @@ export default function CustomerDetailModal({ isOpen, onClose, customer, onCusto
               <div className="form-group">
                 <label>상태</label>
                 <select
-                  value={editedCustomer.status}
+                  value={editedCustomer.status || '입실'}
                   onChange={(e) => handleInputChange('status', e.target.value)}
                 >
                   <option value="입실">입실</option>

@@ -68,7 +68,15 @@ export default function WCustomerContent({
   // 간단한 데이터 로딩 함수
   const loadCustomers = async () => {
     try {
-      // 로딩 상태 업데이트하지 않고 바로 데이터 조회 (게이지 제거)
+      // 로딩 상태 업데이트
+      setLoading(true);
+      onLoadingChange(true);
+      
+      // Supabase 연결 체크
+      if (!supabase) {
+        throw new Error("Supabase 클라이언트가 초기화되지 않았습니다");
+      }
+      
       const { data, error } = await supabase
         .from('w_customers')
         .select('*')
@@ -77,9 +85,23 @@ export default function WCustomerContent({
       if (error) throw error;
       
       setCustomers(data || []);
+      onErrorChange(null); // 성공적으로 로드되면 오류 상태 초기화
     } catch (err: any) {
-      console.error('데이터 로딩 오류:', err.message);
-      onErrorChange(err.message);
+      console.error('데이터 로딩 오류:', err.message || '알 수 없는 오류 발생');
+      
+      // 오류 메시지 구체화
+      let errorMsg = '데이터를 불러오는 중 오류가 발생했습니다.';
+      if (err.message && err.message.includes('Failed to fetch')) {
+        errorMsg = '서버 연결에 실패했습니다. 네트워크 연결을 확인해주세요.';
+      } else if (err.message) {
+        errorMsg = `오류: ${err.message}`;
+      }
+      
+      setCustomers([]); // 오류 시 빈 배열로 설정
+      onErrorChange(errorMsg);
+    } finally {
+      setLoading(false);
+      onLoadingChange(false);
     }
   };
 
