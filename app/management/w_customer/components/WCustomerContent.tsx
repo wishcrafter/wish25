@@ -243,7 +243,7 @@ export default function WCustomerContent({
                         <button
                           type="button"
                           onClick={() => onRoomSelect ? onRoomSelect(item.roomNo as number) : openModal(item.roomNo as number)}
-                          className="btn-sm inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                          className="btn-sm inline-flex px-3 py-1.5 text-xs font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
                         >
                           등록하기
                         </button>

@@ -15,7 +15,12 @@ export default function SimpleModal({ isOpen, onClose, onCustomerCreated, initia
   const [roomNo, setRoomNo] = useState('');
   const [deposit, setDeposit] = useState('');
   const [monthly, setMonthly] = useState('');
+  const [moveInDate, setMoveInDate] = useState(new Date().toISOString().split('T')[0]);
+  const [moveOutDate, setMoveOutDate] = useState('');
   const [phone, setPhone] = useState('');
+  const [phoneSub, setPhoneSub] = useState('');
+  const [address, setAddress] = useState('');
+  const [firstFee, setFirstFee] = useState('');
   const [memo, setMemo] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -24,6 +29,11 @@ export default function SimpleModal({ isOpen, onClose, onCustomerCreated, initia
     if (isOpen && initialRoomNo) {
       setRoomNo(initialRoomNo.toString());
     }
+    
+    // 퇴실일 기본값 설정: 오늘부터 6개월 후
+    const sixMonthsLater = new Date();
+    sixMonthsLater.setMonth(sixMonthsLater.getMonth() + 6);
+    setMoveOutDate(sixMonthsLater.toISOString().split('T')[0]);
   }, [isOpen, initialRoomNo]);
   
   // 모달이 닫힐 때 폼 초기화
@@ -34,7 +44,14 @@ export default function SimpleModal({ isOpen, onClose, onCustomerCreated, initia
         setRoomNo(initialRoomNo ? initialRoomNo.toString() : '');
         setDeposit('');
         setMonthly('');
+        setMoveInDate(new Date().toISOString().split('T')[0]);
+        const sixMonthsLater = new Date();
+        sixMonthsLater.setMonth(sixMonthsLater.getMonth() + 6);
+        setMoveOutDate(sixMonthsLater.toISOString().split('T')[0]);
         setPhone('');
+        setPhoneSub('');
+        setAddress('');
+        setFirstFee('');
         setMemo('');
       }, 300); // 모달 닫힘 애니메이션 후에 초기화
     }
@@ -50,6 +67,11 @@ export default function SimpleModal({ isOpen, onClose, onCustomerCreated, initia
     const value = e.target.value.replace(/[^\d]/g, '');
     setMonthly(value ? parseInt(value).toLocaleString() : '');
   };
+  
+  const handleFirstFeeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/[^\d]/g, '');
+    setFirstFee(value ? parseInt(value).toLocaleString() : '');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,27 +84,26 @@ export default function SimpleModal({ isOpen, onClose, onCustomerCreated, initia
     setLoading(true);
     
     try {
-      // 기본값 설정
-      const today = new Date().toISOString().split('T')[0];
-      const sixMonthsLater = new Date();
-      sixMonthsLater.setMonth(sixMonthsLater.getMonth() + 6);
-      
       const { error } = await supabase.from('w_customers').insert({
         name,
         room_no: parseInt(roomNo),
         deposit: deposit ? parseInt(deposit.replace(/,/g, '')) : 0,
         monthly_fee: monthly ? parseInt(monthly.replace(/,/g, '')) : 0,
+        first_fee: firstFee ? parseInt(firstFee.replace(/,/g, '')) : 0,
         phone: phone || null,
+        phone_sub: phoneSub || null,
+        address: address || null,
         memo: memo || null,
         status: '입실',
-        move_in_date: today,
-        move_out_date: sixMonthsLater.toISOString().split('T')[0]
+        move_in_date: moveInDate || null,
+        move_out_date: moveOutDate || null
       });
       
       if (error) throw error;
       
       onCustomerCreated();
       onClose();
+      alert('고객 등록이 완료되었습니다.');
     } catch (err) {
       console.error('고객 등록 오류:', err);
       alert('고객 등록 중 오류가 발생했습니다.');
@@ -154,6 +175,41 @@ export default function SimpleModal({ isOpen, onClose, onCustomerCreated, initia
               </div>
               
               <div className="form-group">
+                <label>첫달 월세</label>
+                <input
+                  type="text"
+                  value={firstFee}
+                  onChange={handleFirstFeeChange}
+                  placeholder="0"
+                />
+              </div>
+              
+              <div className="form-group">
+                <label>상태</label>
+                <select disabled className="bg-gray-100">
+                  <option value="입실">입실</option>
+                </select>
+              </div>
+              
+              <div className="form-group">
+                <label>입주일</label>
+                <input
+                  type="date"
+                  value={moveInDate}
+                  onChange={(e) => setMoveInDate(e.target.value)}
+                />
+              </div>
+              
+              <div className="form-group">
+                <label>퇴실일</label>
+                <input
+                  type="date"
+                  value={moveOutDate}
+                  onChange={(e) => setMoveOutDate(e.target.value)}
+                />
+              </div>
+              
+              <div className="form-group">
                 <label>연락처</label>
                 <input
                   type="text"
@@ -164,10 +220,23 @@ export default function SimpleModal({ isOpen, onClose, onCustomerCreated, initia
               </div>
               
               <div className="form-group">
-                <label>상태</label>
-                <select disabled className="bg-gray-100">
-                  <option value="입실">입실</option>
-                </select>
+                <label>추가 연락처</label>
+                <input
+                  type="text"
+                  value={phoneSub}
+                  onChange={(e) => setPhoneSub(e.target.value)}
+                  placeholder="추가 연락처"
+                />
+              </div>
+              
+              <div className="form-group">
+                <label>주소</label>
+                <input
+                  type="text"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="주소"
+                />
               </div>
               
               <div className="form-group col-span-2">
