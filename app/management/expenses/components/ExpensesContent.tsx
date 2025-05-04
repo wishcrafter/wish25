@@ -458,70 +458,6 @@ export default function ExpensesContent({
     };
   }, [expensesAll, selectedYear, selectedMonth]);
 
-  // 점포별 비용 표시
-  const renderStoreExpenses = useCallback(() => {
-    // 점포를 두 그룹으로 나누기
-    const firstRowStores = stores.filter(store => [1001, 1003, 1004, 1005, 1100].includes(store.store_id));
-    const secondRowStores = stores.filter(store => [2001, 3001, 9001].includes(store.store_id));
-
-    // 현재 달 및 이전 달 계산
-    const prevMonth = selectedMonth === 1 ? 12 : selectedMonth - 1;
-    const prevYear = selectedMonth === 1 ? selectedYear - 1 : selectedYear;
-
-    // 점포나 거래처 데이터가 없는 경우 로딩 중임을 표시하지 않고 빈 UI 구조 반환
-    return (
-      <>
-        {/* 현재 달 비용 */}
-        <div className="store-summary">
-          <h2 className="summary-title">
-            점포별 고정비용 현황
-            <span className="month">{selectedYear}년 {selectedMonth}월</span>
-          </h2>
-          
-          {/* 첫 번째 행 매장들 */}
-          <div className="store-cards-scroll">
-            {firstRowStores.map(store => renderStoreCard(store, true))}
-          </div>
-          
-          {/* 두 번째 행 매장들 */}
-          <div className="store-cards-scroll">
-            {secondRowStores.map(store => renderStoreCard(store, true))}
-          </div>
-        </div>
-
-        {/* 이전 달 비용 */}
-        <div className="store-summary">
-          <h2 className="summary-title">
-            <button 
-              className="btn btn-secondary copy-button"
-              onClick={handleCopyPrev}
-              disabled={loading || stores.length === 0 || vendors.length === 0}
-            >
-              지난 달 비용 복사
-            </button>
-            <span className="month">{prevYear}년 {String(prevMonth).padStart(2, '0')}월</span>
-          </h2>
-          
-          {/* 첫 번째 행 매장들 (이전 달) */}
-          <div className="store-cards-scroll">
-            {firstRowStores.map(store => renderStoreCard(store, false))}
-          </div>
-          
-          {/* 두 번째 행 매장들 (이전 달) */}
-          <div className="store-cards-scroll">
-            {secondRowStores.map(store => renderStoreCard(store, false))}
-        </div>
-      </div>
-      </>
-    );
-  }, [
-    stores, 
-    selectedYear, 
-    selectedMonth, 
-    loading, 
-    handleCopyPrev
-  ]);
-
   // 매장 카드 렌더링 함수
   const renderStoreCard = useCallback((store: StoreData, isCurrentMonth: boolean) => {
     // 해당 매장의 거래처 목록
@@ -594,7 +530,73 @@ export default function ExpensesContent({
     calculatePreviousMonthStoreExpenses, 
     getCurrentMonthExpense,
     getPrevMonthExpense,
-    handleAmountChange
+    handleAmountChange,
+    inputs
+  ]);
+
+  // 점포별 비용 표시
+  const renderStoreExpenses = useCallback(() => {
+    // 점포를 두 그룹으로 나누기
+    const firstRowStores = stores.filter(store => [1001, 1003, 1004, 1005, 1100].includes(store.store_id));
+    const secondRowStores = stores.filter(store => [2001, 3001, 9001].includes(store.store_id));
+
+    // 현재 달 및 이전 달 계산
+    const prevMonth = selectedMonth === 1 ? 12 : selectedMonth - 1;
+    const prevYear = selectedMonth === 1 ? selectedYear - 1 : selectedYear;
+
+    // 점포나 거래처 데이터가 없는 경우 로딩 중임을 표시하지 않고 빈 UI 구조 반환
+    return (
+      <>
+        {/* 현재 달 비용 */}
+        <div className="store-summary">
+          <h2 className="summary-title">
+            점포별 고정비용 현황
+            <span className="month">{selectedYear}년 {selectedMonth}월</span>
+          </h2>
+          
+          {/* 첫 번째 행 매장들 */}
+          <div className="store-cards-scroll">
+            {firstRowStores.map(store => renderStoreCard(store, true))}
+          </div>
+          
+          {/* 두 번째 행 매장들 */}
+          <div className="store-cards-scroll">
+            {secondRowStores.map(store => renderStoreCard(store, true))}
+          </div>
+        </div>
+
+        {/* 이전 달 비용 */}
+        <div className="store-summary">
+          <h2 className="summary-title">
+            <button 
+              className="btn btn-secondary copy-button"
+              onClick={handleCopyPrev}
+              disabled={loading || stores.length === 0 || vendors.length === 0}
+            >
+              지난 달 비용 복사
+            </button>
+            <span className="month">{prevYear}년 {String(prevMonth).padStart(2, '0')}월</span>
+          </h2>
+          
+          {/* 첫 번째 행 매장들 (이전 달) */}
+          <div className="store-cards-scroll">
+            {firstRowStores.map(store => renderStoreCard(store, false))}
+          </div>
+          
+          {/* 두 번째 행 매장들 (이전 달) */}
+          <div className="store-cards-scroll">
+            {secondRowStores.map(store => renderStoreCard(store, false))}
+        </div>
+      </div>
+      </>
+    );
+  }, [
+    stores, 
+    selectedYear, 
+    selectedMonth, 
+    loading, 
+    handleCopyPrev,
+    renderStoreCard
   ]);
 
   // 컴포넌트 렌더링
