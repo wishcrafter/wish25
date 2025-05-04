@@ -229,29 +229,30 @@ export default function ExpensesContent({
     fetchAll();
   }, [fetchAll]);
 
-  // 입력값 변경을 안전하게 처리하는 함수
+  // 입력값 변경을 안전하게 처리하는 함수 - 개선
   const handleAmountChange = useCallback((storeId: number, vendorId: number, value: string) => {
     const key = `${storeId}-${vendorId}`;
+    // 숫자만 추출 (콤마 제거)
     const numOnly = value.replace(/[^0-9]/g, '');
     
-    console.log(`입력 변경: ${storeId}-${vendorId}, 값: ${numOnly}`);
-      
-    // inputsRef로 항상 최신 상태 참조 보장
-    const updatedInputs = {
-      ...inputsRef.current,
-      [key]: numOnly
-    };
-
-    // 입력값이 빈 문자열이면 해당 키를 제거
-    if (numOnly === '') {
+    console.log(`입력 변경 시도: ${storeId}-${vendorId}, 입력값: ${value}, 변환값: ${numOnly}`);
+    
+    // 입력값 업데이트
+    const updatedInputs = { ...inputsRef.current };
+    
+    // 빈 값이 아닌 경우에만 저장
+    if (numOnly !== '') {
+      updatedInputs[key] = numOnly;
+    } else {
       delete updatedInputs[key];
     }
     
     // 참조와 상태 모두 업데이트
     inputsRef.current = updatedInputs;
-    setInputs({...updatedInputs});
+    setInputs({ ...updatedInputs });
     
-    console.log('현재 입력값들:', Object.keys(updatedInputs).length);
+    console.log(`입력 변경 완료: ${key}, 최종값: ${updatedInputs[key]}, 총 입력값: ${Object.keys(updatedInputs).length}개`);
+    setHasChanges(Object.keys(updatedInputs).length > 0);
   }, []);
 
   // 저장 로직 - 안정적으로 개선 (데이터 불일치 문제 해결)
@@ -579,9 +580,9 @@ export default function ExpensesContent({
                 const dbExpense = getCurrentMonthExpense(store.store_id, vendor.id);
                 const dbAmount = dbExpense?.amount || 0;
                 
-                // 사용자가 입력 중인 값 또는 DB에서 가져온 값 표시
-                const displayValue = inputValue || ''; // 실제 입력 필드 값
-                const placeholderText = dbAmount ? dbAmount.toLocaleString('ko-KR') : '0';  // placeholder 값
+                // 표시 값 설정 - 입력 중이면 입력값, 아니면 빈 값
+                const displayValue = inputValue;
+                const placeholderValue = dbAmount ? dbAmount.toLocaleString('ko-KR') : '0';
                 
                 return (
                   <div key={vendor.id} className="amount-row vendor">
@@ -591,10 +592,11 @@ export default function ExpensesContent({
                         type="text"
                         className="amount-input"
                         value={displayValue}
-                        placeholder={placeholderText}
+                        placeholder={placeholderValue}
                         onChange={(e) => handleAmountChange(store.store_id, vendor.id, e.target.value)}
                         onFocus={(e) => e.target.select()}
                         onClick={(e) => e.currentTarget.select()}
+                        inputMode="numeric"
                       />
                       <span className="amount-unit">원</span>
                     </div>
@@ -724,6 +726,87 @@ export default function ExpensesContent({
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
+        }
+        
+        /* 입력필드 스타일 개선 */
+        .amount-input {
+          width: 100%;
+          padding: 4px 8px;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+          text-align: right;
+          font-size: 14px;
+        }
+        
+        .amount-input:focus {
+          border-color: #007bff;
+          outline: none;
+          box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+        
+        .amount-input-wrapper {
+          display: flex;
+          align-items: center;
+          width: 150px;
+        }
+        
+        .amount-unit {
+          margin-left: 4px;
+          white-space: nowrap;
+        }
+        
+        /* 매장 카드 스타일 개선 */
+        .store-total-card {
+          background-color: white;
+          border-radius: 8px;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          padding: 12px;
+          margin: 8px;
+          min-width: 260px;
+          max-width: 300px;
+          flex-shrink: 0;
+        }
+        
+        .store-name {
+          font-weight: bold;
+          font-size: 16px;
+          padding-bottom: 8px;
+          margin-bottom: 8px;
+          border-bottom: 1px solid #eee;
+        }
+        
+        .store-details {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        
+        .amount-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        
+        .amount-label {
+          font-size: 14px;
+        }
+        
+        .amount-value {
+          font-weight: bold;
+          text-align: right;
+        }
+        
+        .store-cards-scroll {
+          display: flex;
+          overflow-x: auto;
+          padding: 8px 0;
+          margin-bottom: 16px;
+          scrollbar-width: thin;
+        }
+        
+        .amount-row.vendor {
+          margin-left: 8px;
+          font-size: 13px;
         }
       `}</style>
     </div>
