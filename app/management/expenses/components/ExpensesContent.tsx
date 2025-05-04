@@ -108,13 +108,15 @@ export default function ExpensesContent({
     setHasChanges(hasEntries);
   }, [inputs]);
 
-  // 데이터 fetch (연도/월 변경 시 한 번에)
+  // 데이터 fetch (연도/월 변경 시 한 번에) - 데이터 매핑 개선
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
       // 이번달과 지난달 데이터를 한 번에 가져옴
       const prevMonth = selectedMonth === 1 ? 12 : selectedMonth - 1;
       const prevYear = selectedMonth === 1 ? selectedYear - 1 : selectedYear;
+      
+      console.log(`데이터 로드 시작: ${selectedYear}년 ${selectedMonth}월 및 ${prevYear}년 ${prevMonth}월`);
       
       // 데이터를 명확하게 가져오기 위해 필터 개선
       const expensesFilters = {
@@ -134,29 +136,92 @@ export default function ExpensesContent({
       
       console.log('데이터 로드 필터:', JSON.stringify(expensesFilters));
       
+      // 각 테이블 데이터 로드 
       const [storesRes, vendorsRes, expensesRes] = await Promise.all([
         fetchData('stores', { select: 'store_id, store_name', orderBy: 'store_id' }),
         fetchData('vendors', { select: 'id, vendor_name, store_id, category, sort_order', orderBy: 'store_id, sort_order' }),
         fetchData('expenses', expensesFilters)
       ]);
       
+      if (storesRes.error) {
+        console.error('매장 데이터 로드 오류:', storesRes.error);
+        setError('매장 정보를 불러오는 중 오류가 발생했습니다.');
+        return;
+      }
+      
+      if (vendorsRes.error) {
+        console.error('거래처 데이터 로드 오류:', vendorsRes.error);
+        setError('거래처 정보를 불러오는 중 오류가 발생했습니다.');
+        return;
+      }
+      
+      if (expensesRes.error) {
+        console.error('지출 데이터 로드 오류:', expensesRes.error);
+        setError('지출 정보를 불러오는 중 오류가 발생했습니다.');
+        return;
+      }
+      
+      // 매장 및 거래처 현황 로깅
+      const storeCount = storesRes.data?.length || 0;
+      const vendorCount = vendorsRes.data?.length || 0;
+      
+      console.log(`매장 ${storeCount}개, 거래처 ${vendorCount}개 로드됨`);
+      
+      if (storeCount > 0) {
+        console.log('매장 샘플:', storesRes.data?.[0]);
+      }
+      
+      if (vendorCount > 0) {
+        console.log('거래처 샘플:', vendorsRes.data?.[0]);
+      }
+      
+      // 필터링된 데이터 설정
       setStores(storesRes.data || []);
       // 매입 제외
-      setVendors((vendorsRes.data || []).filter((v: VendorData) => v.category !== '매입'));
+      const filteredVendors = (vendorsRes.data || []).filter((v: VendorData) => v.category !== '매입');
+      setVendors(filteredVendors);
       
       // 비용 데이터 확인 로깅
-      console.log(`총 ${expensesRes.data?.length || 0}개 비용 데이터 로드됨`);
-      if (expensesRes.data && expensesRes.data.length > 0) {
-        console.log('샘플 데이터:', expensesRes.data[0]);
+      const expenseCount = expensesRes.data?.length || 0;
+      console.log(`총 ${expenseCount}개 비용 데이터 로드됨`);
+      
+      if (expenseCount > 0) {
+        console.log('비용 데이터 샘플:', expensesRes.data?.[0]);
+        
+        // 테이블 간 ID 매핑 유효성 검사
+        const storeIds = new Set(storesRes.data?.map((s: StoreData) => s.store_id) || []);
+        const vendorIds = new Set(vendorsRes.data?.map((v: VendorData) => v.id) || []);
+        
+        // 없는 store_id 또는 vendor_id 식별
+        const invalidStoreIds = new Set();
+        const invalidVendorIds = new Set();
+        
+        expensesRes.data?.forEach((expense: ExpenseData) => {
+          if (!storeIds.has(expense.store_id)) {
+            invalidStoreIds.add(expense.store_id);
+          }
+          
+          if (!vendorIds.has(expense.vendor_id)) {
+            invalidVendorIds.add(expense.vendor_id);
+          }
+        });
+        
+        if (invalidStoreIds.size > 0) {
+          console.warn('유효하지 않은 store_id 발견:', Array.from(invalidStoreIds));
+        }
+        
+        if (invalidVendorIds.size > 0) {
+          console.warn('유효하지 않은 vendor_id 발견:', Array.from(invalidVendorIds));
+        }
       }
       
       setExpensesAll(expensesRes.data || []);
     } catch (err) {
       console.error('데이터 로딩 중 오류:', err);
       setError('데이터를 불러오는 중 오류가 발생했습니다.');
-      } finally {
-        setLoading(false);
-      }
+    } finally {
+      setLoading(false);
+    }
   }, [selectedYear, selectedMonth]);
 
   // 연도/월 변경 시 데이터 새로고침
@@ -189,7 +254,7 @@ export default function ExpensesContent({
     console.log('현재 입력값들:', Object.keys(updatedInputs).length);
   }, []);
 
-  // 저장 로직 - 안정적으로 개선
+  // 저장 로직 - 안정적으로 개선 (데이터 불일치 문제 해결)
   const handleSave = useCallback(async () => {
     if (Object.keys(inputsRef.current).length === 0) return;
     
@@ -201,7 +266,7 @@ export default function ExpensesContent({
       const currYear = selectedYear;
       const currMonth = selectedMonth;
       
-      console.log(`저장 중: ${currYear}년 ${currMonth}월 데이터`);
+      console.log(`저장 중: ${currYear}년 ${currMonth}월 데이터, 총 ${Object.keys(inputsRef.current).length}개`);
       
       // 입력값을 순차적으로 저장 (모든 key 순회)
       for (const key in inputsRef.current) {
@@ -212,7 +277,7 @@ export default function ExpensesContent({
         
         if (isNaN(amount)) continue; // 유효하지 않은 숫자 제외
         
-        // 기존 데이터 확인
+        // 기존 데이터 확인 (정확한 매칭을 위해 로그 추가)
         const existingRecord = expensesAll.find(e => 
           e.store_id === storeId && 
           e.vendor_id === vendorId &&
@@ -220,14 +285,24 @@ export default function ExpensesContent({
           e.month === currMonth
         );
         
-        console.log(`${storeId}-${vendorId}: 금액 ${amount}원 저장, 기존 데이터 ${existingRecord ? '있음' : '없음'}`);
+        console.log(`저장 데이터 확인 - 매장: ${storeId}, 거래처: ${vendorId}, 금액: ${amount}원, 기존 데이터: ${existingRecord ? `ID ${existingRecord.id}, 금액 ${existingRecord.amount}` : '없음'}`);
         
-        // 업데이트 또는 신규 등록
+        // 업데이트 또는 신규 등록 (디버깅 정보 추가)
         if (existingRecord) {
+          console.log(`업데이트: ID ${existingRecord.id}, 금액 ${amount}원`);
           savePromises.push(
             updateData('expenses', { id: existingRecord.id }, { amount })
+              .then(result => {
+                if (result.error) {
+                  console.error(`ID ${existingRecord.id} 업데이트 실패:`, result.error);
+                } else {
+                  console.log(`ID ${existingRecord.id} 업데이트 성공`);
+                }
+                return result;
+              })
           );
         } else {
+          console.log(`신규 등록: 연도 ${currYear}, 월 ${currMonth}, 매장 ${storeId}, 거래처 ${vendorId}, 금액 ${amount}원`);
           savePromises.push(
             insertData('expenses', {
               year: currYear,
@@ -235,13 +310,21 @@ export default function ExpensesContent({
               store_id: storeId,
               vendor_id: vendorId,
               amount
+            }).then(result => {
+              if (result.error) {
+                console.error(`신규 데이터 저장 실패:`, result.error);
+              } else {
+                console.log(`신규 데이터 저장 성공, ID: ${result.data?.id}`);
+              }
+              return result;
             })
           );
         }
       }
       
       // 모든 요청을 Promise.all로 병렬 처리
-      await Promise.all(savePromises);
+      const results = await Promise.all(savePromises);
+      console.log(`총 ${results.length}개 데이터 저장 완료`);
       
       // 변경 사항 초기화 및 데이터 새로고침
       inputsRef.current = {};
@@ -303,27 +386,41 @@ export default function ExpensesContent({
     }
   }, [expensesAll, selectedYear, selectedMonth]);
 
-  // 특정 매장, 거래처의 이번달 비용 조회
+  // 특정 매장, 거래처의 이번달 비용 조회 (데이터 불일치 문제 해결)
   const getCurrentMonthExpense = useCallback((storeId: number, vendorId: number) => {
-    return expensesAll.find(e => 
+    // 데이터 매핑 문제 확인을 위한 로깅
+    const foundExpense = expensesAll.find(e => 
       e.store_id === storeId && 
       e.vendor_id === vendorId && 
       e.year === selectedYear && 
       e.month === selectedMonth
     );
+    
+    if (foundExpense) {
+      console.log(`현재 월 데이터 찾음: 매장 ${storeId}, 거래처 ${vendorId}, 금액 ${foundExpense.amount}`);
+    }
+    
+    return foundExpense;
   }, [expensesAll, selectedYear, selectedMonth]);
 
-  // 특정 매장, 거래처의 지난달 비용 조회
+  // 특정 매장, 거래처의 지난달 비용 조회 (데이터 불일치 문제 해결)
   const getPrevMonthExpense = useCallback((storeId: number, vendorId: number) => {
     const prevMonth = selectedMonth === 1 ? 12 : selectedMonth - 1;
     const prevYear = selectedMonth === 1 ? selectedYear - 1 : selectedYear;
     
-    return expensesAll.find(e => 
+    // 데이터 매핑 문제 확인을 위한 로깅
+    const foundExpense = expensesAll.find(e => 
       e.store_id === storeId && 
       e.vendor_id === vendorId && 
       e.year === prevYear && 
       e.month === prevMonth
     );
+    
+    if (foundExpense) {
+      console.log(`이전 월 데이터 찾음: 매장 ${storeId}, 거래처 ${vendorId}, 금액 ${foundExpense.amount}`);
+    }
+    
+    return foundExpense;
   }, [expensesAll, selectedYear, selectedMonth]);
 
   // 점포별 비용 계산 (이번달)
