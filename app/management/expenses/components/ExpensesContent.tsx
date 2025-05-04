@@ -65,45 +65,39 @@ export default function ExpensesContent({
   // 사용자가 현재 편집 중인 데이터만 따로 관리
   const [editData, setEditData] = useState<{ [key: string]: string }>({});
   
-  // 초기 데이터 로드 및 연도/월 변경 시 모든 입력값 초기화
+  // 단순화된 초기화 로직
   useEffect(() => {
     setEditData({});
-    setInputs({});
     inputsRef.current = {};
+    setInputs({});
     setHasChanges(false);
   }, [selectedYear, selectedMonth]);
 
-  // 초기 렌더링 시 editData 초기화 설정 (uncontrolled->controlled 전환 방지)
+  // 데이터 변경 감지 
   useEffect(() => {
-    // 처음부터 빈 객체가 아닌 필요한 키를 모두 빈 문자열로 초기화
-    const initialEditData: { [key: string]: string } = {};
+    let hasChanges = false;
     
-    // 현재 월에 해당하는 모든 항목에 대해 빈 문자열로 초기화
-    vendors.forEach(vendor => {
-      stores.forEach(store => {
-        if (vendor.store_id === store.store_id) {
-          const key = `${store.store_id}-${vendor.id}`;
-          initialEditData[key] = '';
-        }
-      });
-    });
+    // 하나라도 빈 값이 아닌 것이 있으면 변경됨
+    for (const key in editData) {
+      if (editData[key] && editData[key].trim() !== '') {
+        hasChanges = true;
+        break;
+      }
+    }
     
-    setEditData(initialEditData);
-  }, [vendors, stores, selectedYear, selectedMonth]);
-
-  // 데이터 변경 감지 (편집된 데이터만 추적)
-  useEffect(() => {
-    const hasEdits = Object.values(editData).some(value => value !== '');
-    setHasChanges(hasEdits);
+    setHasChanges(hasChanges);
   }, [editData]);
 
-  // 입력 처리 함수 - 완전 재작성
+  // 입력 처리 함수 - 최대한 단순화
   const handleAmountChange = useCallback((storeId: number, vendorId: number, value: string) => {
-    // 입력값을 직접 저장 (아무 변환 없이)
-    setEditData(prev => {
-      const key = `${storeId}-${vendorId}`;
-      return { ...prev, [key]: value };
-    });
+    console.log(`숫자 입력: ${value}`); // 디버깅용
+    const key = `${storeId}-${vendorId}`;
+    
+    // 직접 상태 업데이트 (필터링 없이)
+    setEditData(prev => ({
+      ...prev,
+      [key]: value
+    }));
   }, []);
 
   // 로딩 상태 변경 시 부모에게 전달
@@ -577,15 +571,9 @@ export default function ExpensesContent({
             vendorsList.map(vendor => {
               // 현재 달인 경우 편집 가능한 입력 필드 표시
               if (isCurrentMonth) {
-                // 단순 키 (매장ID-거래처ID)
                 const key = `${store.store_id}-${vendor.id}`;
-                
-                // DB에 저장된 기존 금액 (없으면 0)
                 const dbExpense = getCurrentMonthExpense(store.store_id, vendor.id);
                 const dbAmount = dbExpense?.amount || 0;
-                
-                // 편집 중인 값 또는 빈 문자열 (null/undefined 피하기)
-                const editValue = editData[key] || '';
                 
                 return (
                   <div key={vendor.id} className="amount-row vendor">
@@ -593,9 +581,10 @@ export default function ExpensesContent({
                     <div className="amount-input-wrapper">
                       <input
                         type="text"
+                        inputMode="numeric"
                         className="amount-input"
-                        value={editValue} 
-                        placeholder={dbAmount ? dbAmount.toLocaleString('ko-KR') : '0'}
+                        value={editData[key] || ''}
+                        placeholder={dbAmount.toLocaleString()}
                         onChange={(e) => handleAmountChange(store.store_id, vendor.id, e.target.value)}
                       />
                       <span className="amount-unit">원</span>
