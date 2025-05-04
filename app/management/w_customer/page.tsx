@@ -48,7 +48,7 @@ export default function WCustomerPage() {
                 onClick={() => setStatusFilter(status)}
                 className={`filter-btn px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
                   statusFilter === status 
-                    ? 'bg-blue-500 text-white shadow-sm' 
+                    ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-500 ring-offset-2' 
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
