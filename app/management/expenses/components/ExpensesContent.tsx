@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, Dispatch, SetStateAction, useRef, useCallback } from 'react';
+import { useEffect, useState, Dispatch, SetStateAction, useCallback } from 'react';
 import { fetchData, insertData, updateData } from '../../../../utils/supabase-client-api';
 
 // 비용 데이터 인터페이스
@@ -46,59 +46,28 @@ export default function ExpensesContent({
   onHasChangesChange,
   isSaving: externalIsSaving
 }: ExpenseContentProps) {
-  // 상태 관리
+  // 기본 상태 관리
   const [stores, setStores] = useState<StoreData[]>([]);
   const [vendors, setVendors] = useState<VendorData[]>([]);
-  const [expensesAll, setExpensesAll] = useState<ExpenseData[]>([]);
+  const [expenses, setExpenses] = useState<ExpenseData[]>([]);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
   
-  // 참조 객체로 상태 변화를 추적하여 최신 상태 보장
-  const inputsRef = useRef<{ [key: string]: string }>({});
-  const [inputs, setInputs] = useState<{ [key: string]: string }>({});
+  // 사용자 입력값 (키: storeId-vendorId 형식)
+  const [inputValues, setInputValues] = useState<{[key: string]: string}>({});
   
+  // 상태 관리
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // 사용자가 현재 편집 중인 데이터만 따로 관리
-  const [editData, setEditData] = useState<{ [key: string]: string }>({});
-  
-  // 단순화된 초기화 로직
+  // 외부에서 저장 상태를 관리하는 경우
   useEffect(() => {
-    setEditData({});
-    inputsRef.current = {};
-    setInputs({});
-    setHasChanges(false);
-  }, [selectedYear, selectedMonth]);
-
-  // 데이터 변경 감지 
-  useEffect(() => {
-    let hasChanges = false;
-    
-    // 하나라도 빈 값이 아닌 것이 있으면 변경됨
-    for (const key in editData) {
-      if (editData[key] && editData[key].trim() !== '') {
-        hasChanges = true;
-        break;
-      }
+    if (externalIsSaving !== undefined) {
+      setIsSaving(externalIsSaving);
     }
-    
-    setHasChanges(hasChanges);
-  }, [editData]);
-
-  // 입력 처리 함수 - 최대한 단순화
-  const handleAmountChange = useCallback((storeId: number, vendorId: number, value: string) => {
-    console.log(`숫자 입력: ${value}`); // 디버깅용
-    const key = `${storeId}-${vendorId}`;
-    
-    // 직접 상태 업데이트 (필터링 없이)
-    setEditData(prev => ({
-      ...prev,
-      [key]: value
-    }));
-  }, []);
+  }, [externalIsSaving]);
 
   // 로딩 상태 변경 시 부모에게 전달
   useEffect(() => {
@@ -121,148 +90,91 @@ export default function ExpensesContent({
     }
   }, [hasChanges, onHasChangesChange]);
 
-  // 외부에서 저장 상태를 관리하는 경우
-  useEffect(() => {
-    if (externalIsSaving !== undefined) {
-      setIsSaving(externalIsSaving);
-    }
-  }, [externalIsSaving]);
-
-  // 연도 옵션 생성 (number 타입)
+  // 연도 및 월 옵션
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
-  // 월 옵션 생성 (number 타입)
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
 
-  // 데이터 fetch (연도/월 변경 시 한 번에) - 데이터 매핑 개선
-  const fetchAll = useCallback(async () => {
+  // 입력값 변경 시 hasChanges 업데이트
+  useEffect(() => {
+    setHasChanges(Object.keys(inputValues).length > 0);
+  }, [inputValues]);
+
+  // 연도/월 변경 시 입력값 초기화
+  useEffect(() => {
+    setInputValues({});
+  }, [selectedYear, selectedMonth]);
+
+  // 데이터 로드 함수
+  const loadData = useCallback(async () => {
     setLoading(true);
+    setError(null);
+    
     try {
-      // 이번달과 지난달 데이터를 한 번에 가져옴
-      const prevMonth = selectedMonth === 1 ? 12 : selectedMonth - 1;
-      const prevYear = selectedMonth === 1 ? selectedYear - 1 : selectedYear;
+      console.log(`데이터 로드 시작: ${selectedYear}년 ${selectedMonth}월`);
       
-      console.log(`데이터 로드 시작: ${selectedYear}년 ${selectedMonth}월 및 ${prevYear}년 ${prevMonth}월`);
-      
-      // 데이터를 명확하게 가져오기 위해 필터 개선
-      const expensesFilters = {
-        filters: {
-          or: [
-            { and: [
-              { year: selectedYear }, 
-              { month: selectedMonth }
-            ]},
-            { and: [
-              { year: prevYear }, 
-              { month: prevMonth }
-            ]}
-          ]
-        }
-      };
-      
-      console.log('데이터 로드 필터:', JSON.stringify(expensesFilters));
-      
-      // 각 테이블 데이터 로드 
+      // 매장, 거래처, 비용 데이터 로드
       const [storesRes, vendorsRes, expensesRes] = await Promise.all([
         fetchData('stores', { select: 'store_id, store_name', orderBy: 'store_id' }),
         fetchData('vendors', { select: 'id, vendor_name, store_id, category, sort_order', orderBy: 'store_id, sort_order' }),
-        fetchData('expenses', expensesFilters)
+        fetchData('expenses', { 
+          filters: { 
+            and: [
+              { year: selectedYear },
+              { month: selectedMonth }
+            ]
+          }
+        })
       ]);
       
-      if (storesRes.error) {
-        console.error('매장 데이터 로드 오류:', storesRes.error);
-        setError('매장 정보를 불러오는 중 오류가 발생했습니다.');
-        return;
+      // 에러 체크
+      if (storesRes.error || vendorsRes.error || expensesRes.error) {
+        throw new Error('데이터 로드 중 오류가 발생했습니다.');
       }
       
-      if (vendorsRes.error) {
-        console.error('거래처 데이터 로드 오류:', vendorsRes.error);
-        setError('거래처 정보를 불러오는 중 오류가 발생했습니다.');
-        return;
-      }
-      
-      if (expensesRes.error) {
-        console.error('지출 데이터 로드 오류:', expensesRes.error);
-        setError('지출 정보를 불러오는 중 오류가 발생했습니다.');
-        return;
-      }
-      
-      // 매장 및 거래처 현황 로깅
-      const storeCount = storesRes.data?.length || 0;
-      const vendorCount = vendorsRes.data?.length || 0;
-      
-      console.log(`매장 ${storeCount}개, 거래처 ${vendorCount}개 로드됨`);
-      
-      if (storeCount > 0) {
-        console.log('매장 샘플:', storesRes.data?.[0]);
-      }
-      
-      if (vendorCount > 0) {
-        console.log('거래처 샘플:', vendorsRes.data?.[0]);
-      }
-      
-      // 필터링된 데이터 설정
+      // 데이터 설정
       setStores(storesRes.data || []);
-      // 매입 제외
-      const filteredVendors = (vendorsRes.data || []).filter((v: VendorData) => v.category !== '매입');
-      setVendors(filteredVendors);
+      setVendors((vendorsRes.data || []).filter((v: VendorData) => v.category !== '매입'));
+      setExpenses(expensesRes.data || []);
       
-      // 비용 데이터 확인 로깅
-      const expenseCount = expensesRes.data?.length || 0;
-      console.log(`총 ${expenseCount}개 비용 데이터 로드됨`);
+      console.log(`데이터 로드 완료: 매장 ${storesRes.data?.length || 0}개, 거래처 ${vendorsRes.data?.length || 0}개, 비용 ${expensesRes.data?.length || 0}개`);
       
-      if (expenseCount > 0) {
-        console.log('비용 데이터 샘플:', expensesRes.data?.[0]);
-        
-        // 테이블 간 ID 매핑 유효성 검사
-        const storeIds = new Set(storesRes.data?.map((s: StoreData) => s.store_id) || []);
-        const vendorIds = new Set(vendorsRes.data?.map((v: VendorData) => v.id) || []);
-        
-        // 없는 store_id 또는 vendor_id 식별
-        const invalidStoreIds = new Set();
-        const invalidVendorIds = new Set();
-        
-        expensesRes.data?.forEach((expense: ExpenseData) => {
-          if (!storeIds.has(expense.store_id)) {
-            invalidStoreIds.add(expense.store_id);
-          }
-          
-          if (!vendorIds.has(expense.vendor_id)) {
-            invalidVendorIds.add(expense.vendor_id);
-          }
-        });
-        
-        if (invalidStoreIds.size > 0) {
-          console.warn('유효하지 않은 store_id 발견:', Array.from(invalidStoreIds));
-        }
-        
-        if (invalidVendorIds.size > 0) {
-          console.warn('유효하지 않은 vendor_id 발견:', Array.from(invalidVendorIds));
-        }
-      }
-      
-      setExpensesAll(expensesRes.data || []);
     } catch (err) {
-      console.error('데이터 로딩 중 오류:', err);
+      console.error('데이터 로드 오류:', err);
       setError('데이터를 불러오는 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
   }, [selectedYear, selectedMonth]);
 
-  // 연도/월 변경 시 데이터 새로고침
+  // 컴포넌트 마운트 및 연도/월 변경 시 데이터 로드
   useEffect(() => {
-    fetchAll();
-  }, [fetchAll]);
+    loadData();
+  }, [loadData]);
 
-  // 저장 함수 - 수정
-  const handleSave = useCallback(async () => {
-    // 실제 수정된 데이터만 걸러냄
-    const modifiedData = Object.entries(editData).filter(([key, value]) => 
-      value.trim() !== '' // 빈 값은 무시
-    );
+  // 입력값 변경 핸들러 (가장 단순한 형태로 구현)
+  const handleInputChange = useCallback((storeId: number, vendorId: number, value: string) => {
+    const key = `${storeId}-${vendorId}`;
     
-    if (modifiedData.length === 0) {
-      return; // 변경사항 없으면 종료
+    // 입력값 설정 (복잡한 로직 없이)
+    setInputValues(prev => {
+      const newValues = { ...prev };
+      
+      if (value === '') {
+        // 빈 값이면 키 삭제
+        delete newValues[key];
+      } else {
+        // 그 외에는 그대로 저장
+        newValues[key] = value;
+      }
+      
+      return newValues;
+    });
+  }, []);
+
+  // 저장 함수
+  const handleSave = useCallback(async () => {
+    if (Object.keys(inputValues).length === 0) {
+      return;
     }
     
     setIsSaving(true);
@@ -271,34 +183,26 @@ export default function ExpensesContent({
     try {
       const promises = [];
       
-      // 편집 데이터 처리
-      for (const [key, value] of modifiedData) {
+      // 각 입력값에 대해 저장 처리
+      for (const key in inputValues) {
         const [storeId, vendorId] = key.split('-').map(Number);
-        const amountStr = value.replace(/,/g, '').trim(); // 쉼표 제거
-        const amount = Number(amountStr);
+        const amount = parseInt(inputValues[key].replace(/,/g, ''), 10);
         
-        if (isNaN(amount) || amount < 0) {
-          console.error(`유효하지 않은 금액: ${value}`);
-          continue;
-        }
+        if (isNaN(amount)) continue;
         
         // 현재 선택된 연월에 해당하는 기존 데이터 찾기
-        const existingRecord = expensesAll.find(e => 
+        const existingExpense = expenses.find(e => 
           e.store_id === storeId && 
-          e.vendor_id === vendorId &&
-          e.year === selectedYear && 
-          e.month === selectedMonth
+          e.vendor_id === vendorId
         );
         
-        if (existingRecord) {
+        if (existingExpense) {
           // 기존 데이터 업데이트
-          console.log(`${selectedYear}년 ${selectedMonth}월 데이터 업데이트: ${storeId}-${vendorId}, 금액: ${amount}`);
           promises.push(
-            updateData('expenses', { id: existingRecord.id }, { amount })
+            updateData('expenses', { id: existingExpense.id }, { amount })
           );
         } else {
-          // 신규 데이터 삽입
-          console.log(`${selectedYear}년 ${selectedMonth}월 데이터 신규 저장: ${storeId}-${vendorId}, 금액: ${amount}`);
+          // 신규 데이터 저장
           promises.push(
             insertData('expenses', {
               year: selectedYear,
@@ -311,30 +215,23 @@ export default function ExpensesContent({
         }
       }
       
-      // 모든 요청 처리
+      // 모든 저장 요청 처리
       await Promise.all(promises);
-      console.log(`${selectedYear}년 ${selectedMonth}월 데이터 저장 완료: ${promises.length}개 항목`);
       
-      // 데이터 새로고침 (편집 데이터는 초기화하지 않고 빈 값으로 유지)
-      await fetchAll();
+      // 저장 후 데이터 새로고침
+      await loadData();
       
-      // 편집된 값들을 빈 문자열로 재설정
-      setEditData(prev => {
-        const resetData = { ...prev };
-        Object.keys(resetData).forEach(key => {
-          resetData[key] = '';
-        });
-        return resetData;
-      });
+      // 입력값 초기화
+      setInputValues({});
       
-    } catch (error) {
-      console.error('저장 중 오류:', error);
-      setError(`${selectedYear}년 ${selectedMonth}월 데이터 저장 중 오류가 발생했습니다.`);
+    } catch (err) {
+      console.error('저장 오류:', err);
+      setError('데이터 저장 중 오류가 발생했습니다.');
     } finally {
       setIsSaving(false);
       setLoading(false);
     }
-  }, [editData, fetchAll, expensesAll, selectedYear, selectedMonth]);
+  }, [inputValues, expenses, selectedYear, selectedMonth, loadData]);
 
   // 저장 함수 레퍼런스 공유
   useEffect(() => {
@@ -343,300 +240,93 @@ export default function ExpensesContent({
     }
   }, [handleSave, onSaveFnChange]);
 
-  // 지난 달 복사 - 새 방식으로 수정
+  // 지난 달 데이터 복사
   const handleCopyPrev = useCallback(async () => {
     setLoading(true);
     
     try {
       const prevMonth = selectedMonth === 1 ? 12 : selectedMonth - 1;
       const prevYear = selectedMonth === 1 ? selectedYear - 1 : selectedYear;
-    
-      // 지난달 데이터 필터링
-      const prevExpenses = expensesAll.filter(e => 
-        e.year === prevYear && e.month === prevMonth
-      );
+      
+      // 지난 달 데이터 로드
+      const prevExpensesRes = await fetchData('expenses', { 
+        filters: { 
+          and: [
+            { year: prevYear },
+            { month: prevMonth }
+          ]
+        }
+      });
+      
+      if (prevExpensesRes.error) {
+        throw new Error('지난 달 데이터를 불러오는 중 오류가 발생했습니다.');
+      }
+      
+      const prevExpenses = prevExpensesRes.data || [];
       
       if (prevExpenses.length === 0) {
         setError('지난 달 데이터가 없습니다.');
         return;
       }
       
-      // 새 입력값 설정
-      const newEditData: { [key: string]: string } = {};
+      // 지난 달 데이터로 입력값 설정
+      const newInputs: {[key: string]: string} = {};
       
-      prevExpenses.forEach(expense => {
-        // 단순 키 생성 (매장ID-거래처ID)
+      prevExpenses.forEach((expense: ExpenseData) => {
         const key = `${expense.store_id}-${expense.vendor_id}`;
-        newEditData[key] = expense.amount.toString();
-        console.log(`지난달 복사: ${prevYear}년 ${prevMonth}월 → ${selectedYear}년 ${selectedMonth}월, ${key}: ${expense.amount}`);
+        newInputs[key] = expense.amount.toString();
       });
-    
-      // 편집 데이터 업데이트
-      setEditData(newEditData);
-      setHasChanges(true);
-    
+      
+      setInputValues(newInputs);
+      
     } catch (err) {
-      console.error('지난 달 데이터 복사 중 오류:', err);
+      console.error('지난 달 데이터 복사 오류:', err);
       setError('지난 달 데이터 복사 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
-  }, [expensesAll, selectedYear, selectedMonth]);
+  }, [selectedYear, selectedMonth]);
 
-  // 특정 매장, 거래처의 이번달 비용 조회 (데이터 불일치 문제 해결)
-  const getCurrentMonthExpense = useCallback((storeId: number, vendorId: number) => {
-    // 데이터 매핑 문제 확인을 위한 로깅
-    const foundExpense = expensesAll.find(e => 
+  // 특정 매장, 거래처의 현재 비용 조회
+  const getCurrentExpense = useCallback((storeId: number, vendorId: number) => {
+    return expenses.find(e => 
       e.store_id === storeId && 
-      e.vendor_id === vendorId && 
-      e.year === selectedYear && 
-      e.month === selectedMonth
+      e.vendor_id === vendorId
     );
-    
-    if (foundExpense) {
-      console.log(`현재 월 데이터 찾음: 매장 ${storeId}, 거래처 ${vendorId}, 금액 ${foundExpense.amount}`);
-    }
-    
-    return foundExpense;
-  }, [expensesAll, selectedYear, selectedMonth]);
+  }, [expenses]);
 
-  // 특정 매장, 거래처의 지난달 비용 조회 (데이터 불일치 문제 해결)
-  const getPrevMonthExpense = useCallback((storeId: number, vendorId: number) => {
-    const prevMonth = selectedMonth === 1 ? 12 : selectedMonth - 1;
-    const prevYear = selectedMonth === 1 ? selectedYear - 1 : selectedYear;
-    
-    // 데이터 매핑 문제 확인을 위한 로깅
-    const foundExpense = expensesAll.find(e => 
-      e.store_id === storeId && 
-      e.vendor_id === vendorId && 
-      e.year === prevYear && 
-      e.month === prevMonth
-    );
-    
-    if (foundExpense) {
-      console.log(`이전 월 데이터 찾음: 매장 ${storeId}, 거래처 ${vendorId}, 금액 ${foundExpense.amount}`);
-    }
-    
-    return foundExpense;
-  }, [expensesAll, selectedYear, selectedMonth]);
-
-  // 점포별 비용 계산 (이번달) - 새 방식
-  const calculateStoreExpenses = useCallback((storeId: number) => {
-    // 현재 선택된 연월에 해당하는 비용만 필터링
-    const storeExpenses = expensesAll.filter(e => 
-      e.store_id === storeId && 
-      e.year === selectedYear && 
-      e.month === selectedMonth
-    );
-    
+  // 매장별 총 비용 계산
+  const calculateTotalExpense = useCallback((storeId: number) => {
+    // 해당 매장의 모든 거래처
     const storeVendors = vendors.filter(v => v.store_id === storeId);
     
-    // 입력값과 DB값을 모두 고려하여 총액 계산
+    // 총 비용 계산
     let total = 0;
     
     storeVendors.forEach(vendor => {
-      // 단순 키 (매장ID-거래처ID)
       const key = `${storeId}-${vendor.id}`;
       
-      if (editData[key]) {
-        // 편집 중인 값이 있으면 그 값 사용
-        const editValue = editData[key].replace(/,/g, '').trim();
-        const amount = Number(editValue);
+      if (inputValues[key]) {
+        // 입력값이 있는 경우
+        const amount = parseInt(inputValues[key].replace(/,/g, ''), 10);
         if (!isNaN(amount)) {
           total += amount;
         }
       } else {
-        // 편집 값이 없으면 DB 값 사용
-        const dbExpense = storeExpenses.find(e => e.vendor_id === vendor.id);
-        total += dbExpense?.amount || 0;
+        // 기존 데이터 사용
+        const expense = getCurrentExpense(storeId, vendor.id);
+        if (expense) {
+          total += expense.amount;
+        }
       }
     });
     
-    return {
-      total,
-      expenses: storeVendors.map(vendor => {
-        const expense = storeExpenses.find(e => e.vendor_id === vendor.id);
-        return {
-          vendor_id: vendor.id,
-          category: vendor.category,
-          amount: expense?.amount || 0
-        };
-      })
-    };
-  }, [expensesAll, selectedYear, selectedMonth, vendors, editData]);
+    return total;
+  }, [vendors, inputValues, getCurrentExpense]);
 
-  // 지난달 비용 계산
-  const calculatePreviousMonthStoreExpenses = useCallback((storeId: number) => {
-    const prevMonth = selectedMonth === 1 ? 12 : selectedMonth - 1;
-    const prevYear = selectedMonth === 1 ? selectedYear - 1 : selectedYear;
-    
-    const storeExpenses = expensesAll.filter(e => 
-      e.store_id === storeId && 
-      e.year === prevYear && 
-      e.month === prevMonth
-    );
-
-    return {
-      total: storeExpenses.reduce((sum, e) => sum + e.amount, 0),
-      expenses: storeExpenses
-    };
-  }, [expensesAll, selectedYear, selectedMonth]);
-
-  // 점포별 비용 표시
-  const renderStoreExpenses = useCallback(() => {
-    // 점포를 두 그룹으로 나누기
-    const firstRowStores = stores.filter(store => [1001, 1003, 1004, 1005, 1100].includes(store.store_id));
-    const secondRowStores = stores.filter(store => [2001, 3001, 9001].includes(store.store_id));
-
-    // 현재 달 및 이전 달 계산
-    const prevMonth = selectedMonth === 1 ? 12 : selectedMonth - 1;
-    const prevYear = selectedMonth === 1 ? selectedYear - 1 : selectedYear;
-
-    // 점포나 거래처 데이터가 없는 경우 로딩 중임을 표시하지 않고 빈 UI 구조 반환
-    return (
-      <>
-        {/* 현재 달 비용 */}
-        <div className="store-summary">
-          <h2 className="summary-title">
-            점포별 고정비용 현황
-            <span className="month">{selectedYear}년 {selectedMonth}월</span>
-          </h2>
-          
-          {/* 첫 번째 행 매장들 */}
-          <div className="store-cards-scroll">
-            {firstRowStores.map(store => renderStoreCard(store, true))}
-          </div>
-          
-          {/* 두 번째 행 매장들 */}
-          <div className="store-cards-scroll">
-            {secondRowStores.map(store => renderStoreCard(store, true))}
-          </div>
-        </div>
-
-        {/* 이전 달 비용 */}
-        <div className="store-summary">
-          <h2 className="summary-title">
-            <button 
-              className="btn btn-secondary copy-button"
-              onClick={handleCopyPrev}
-              disabled={loading || stores.length === 0 || vendors.length === 0}
-            >
-              지난 달 비용 복사
-            </button>
-            <span className="month">{prevYear}년 {String(prevMonth).padStart(2, '0')}월</span>
-          </h2>
-          
-          {/* 첫 번째 행 매장들 (이전 달) */}
-          <div className="store-cards-scroll">
-            {firstRowStores.map(store => renderStoreCard(store, false))}
-          </div>
-          
-          {/* 두 번째 행 매장들 (이전 달) */}
-          <div className="store-cards-scroll">
-            {secondRowStores.map(store => renderStoreCard(store, false))}
-        </div>
-      </div>
-      </>
-    );
-  }, [
-    stores, 
-    selectedYear, 
-    selectedMonth, 
-    loading, 
-    handleCopyPrev
-  ]);
-
-  // 매장 카드 렌더링 함수
-  const renderStoreCard = useCallback((store: StoreData, isCurrentMonth: boolean) => {
-    // 해당 매장의 거래처 목록
-    const vendorsList = vendors.filter(v => v.store_id === store.store_id);
-    
-    // 계산된 데이터 가져오기
-    const storeData = isCurrentMonth 
-      ? calculateStoreExpenses(store.store_id)
-      : calculatePreviousMonthStoreExpenses(store.store_id);
-    
-    return (
-      <div key={store.store_id} className="store-total-card">
-        <div className="store-name">{store.store_name}</div>
-        <div className="store-details">
-          {/* 총 비용 표시 */}
-          <div className="amount-row">
-            <span className="amount-label">총 고정비용</span>
-            <span className="amount-value">{storeData.total.toLocaleString('ko-KR')}원</span>
-          </div>
-          
-          {/* 거래처별 비용 표시 */}
-          {vendorsList.length > 0 ? (
-            vendorsList.map(vendor => {
-              // 현재 달인 경우 편집 가능한 입력 필드 표시
-              if (isCurrentMonth) {
-                const key = `${store.store_id}-${vendor.id}`;
-                const dbExpense = getCurrentMonthExpense(store.store_id, vendor.id);
-                const dbAmount = dbExpense?.amount || 0;
-                
-                return (
-                  <div key={vendor.id} className="amount-row vendor">
-                    <span className="amount-label">{vendor.category}</span>
-                    <div className="amount-input-wrapper">
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        className="amount-input"
-                        value={editData[key] || ''}
-                        placeholder={dbAmount.toLocaleString()}
-                        onChange={(e) => handleAmountChange(store.store_id, vendor.id, e.target.value)}
-                      />
-                      <span className="amount-unit">원</span>
-                    </div>
-                  </div>
-                );
-              } else {
-                // 지난 달 데이터는 읽기 전용 표시
-                const prevExpense = getPrevMonthExpense(store.store_id, vendor.id);
-                const amount = prevExpense?.amount || 0;
-                
-                return (
-                  <div key={vendor.id} className="amount-row vendor">
-                    <span className="amount-label">{vendor.category}</span>
-                    <span className="amount-value">{amount.toLocaleString('ko-KR')}원</span>
-                  </div>
-                );
-              }
-            })
-          ) : (
-            <div className="amount-row vendor">
-              <span className="amount-label">데이터 준비 중...</span>
-              <span className="amount-value">-</span>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }, [
-    vendors, 
-    calculateStoreExpenses, 
-    calculatePreviousMonthStoreExpenses, 
-    getCurrentMonthExpense,
-    getPrevMonthExpense,
-    handleAmountChange
-  ]);
-
-  // 컴포넌트 렌더링
+  // 컨텐츠 렌더링
   return (
-    <div className="expenses-content expenses-page">
-      {(!onSaveFnChange || !onHasChangesChange) && (
-        <div className="page-actions">
-        <button 
-          className="btn btn-primary"
-            onClick={handleSave}
-          disabled={isSaving || !hasChanges}
-        >
-          {isSaving ? '저장 중...' : '저장'}
-        </button>
-      </div>
-      )}
-
+    <div className="expenses-content">
       {/* 연도/월 선택 필터 */}
       <div className="date-filters">
         <div className="select-wrapper">
@@ -663,24 +353,81 @@ export default function ExpensesContent({
         </div>
       </div>
 
-      {/* 에러 상태만 별도 표시 */}
+      {/* 에러 표시 */}
       {error && (
         <div className="error-state">
-          <h3>에러 발생:</h3>
           <p>{error}</p>
-          <button 
-            className="btn btn-primary mt-4"
-            onClick={() => window.location.reload()}
-          >
-            새로고침
-          </button>
+          <button onClick={() => window.location.reload()}>새로고침</button>
         </div>
       )}
 
-      {/* 비용 데이터 표시 - 에러가 없을 때만 표시 */}
-      {!error && renderStoreExpenses()}
-      
-      {/* 로딩 상태 - 오버레이 방식으로 표시 */}
+      {/* 비용 데이터 표시 */}
+      {!error && (
+        <div className="store-summary">
+          <h2 className="summary-title">
+            점포별 고정비용 현황
+            <span className="month">{selectedYear}년 {selectedMonth}월</span>
+            <button 
+              className="btn btn-secondary copy-button"
+              onClick={handleCopyPrev}
+              disabled={loading}
+            >
+              지난 달 비용 복사
+            </button>
+          </h2>
+          
+          {/* 매장 목록 */}
+          <div className="store-cards">
+            {stores.map(store => {
+              // 해당 매장의 거래처들
+              const storeVendors = vendors.filter(v => v.store_id === store.store_id);
+              
+              // 총 비용
+              const totalExpense = calculateTotalExpense(store.store_id);
+              
+              return (
+                <div key={store.store_id} className="store-card">
+                  <div className="store-header">
+                    <h3>{store.store_name}</h3>
+                    <div className="store-total">
+                      총액: {totalExpense.toLocaleString('ko-KR')}원
+                    </div>
+                  </div>
+                  
+                  <div className="vendor-list">
+                    {storeVendors.map(vendor => {
+                      // 현재 입력값 또는 DB 값
+                      const key = `${store.store_id}-${vendor.id}`;
+                      const currentValue = inputValues[key] || '';
+                      
+                      // DB에 저장된 금액
+                      const dbExpense = getCurrentExpense(store.store_id, vendor.id);
+                      const dbAmount = dbExpense?.amount || 0;
+                      
+                      return (
+                        <div key={vendor.id} className="vendor-item">
+                          <div className="vendor-name">{vendor.category}</div>
+                          <div className="vendor-input">
+                            <input
+                              type="text"
+                              value={currentValue}
+                              placeholder={dbAmount.toLocaleString('ko-KR')}
+                              onChange={(e) => handleInputChange(store.store_id, vendor.id, e.target.value)}
+                            />
+                            <span>원</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 로딩 표시 */}
       {loading && (
         <div className="loading-overlay">
           <div className="loading-spinner"></div>
@@ -688,114 +435,142 @@ export default function ExpensesContent({
       )}
 
       <style jsx>{`
+        .expenses-content {
+          padding: 20px;
+          position: relative;
+        }
+        
+        .date-filters {
+          display: flex;
+          margin-bottom: 20px;
+        }
+        
+        .select-wrapper {
+          margin-right: 10px;
+        }
+        
+        select {
+          padding: 8px 12px;
+          border-radius: 4px;
+          border: 1px solid #ccc;
+          background-color: white;
+        }
+        
+        .error-state {
+          background-color: #ffebee;
+          padding: 15px;
+          border-radius: 4px;
+          margin-bottom: 20px;
+        }
+        
+        .store-summary {
+          margin-bottom: 30px;
+        }
+        
+        .summary-title {
+          display: flex;
+          align-items: center;
+          margin-bottom: 15px;
+        }
+        
+        .month {
+          margin-left: 10px;
+          font-size: 16px;
+          color: #666;
+        }
+        
+        .copy-button {
+          margin-left: auto;
+          font-size: 14px;
+          padding: 5px 10px;
+        }
+        
+        .store-cards {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 20px;
+        }
+        
+        .store-card {
+          background-color: white;
+          border-radius: 8px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          padding: 15px;
+          width: 300px;
+        }
+        
+        .store-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 10px;
+          padding-bottom: 10px;
+          border-bottom: 1px solid #eee;
+        }
+        
+        .store-header h3 {
+          margin: 0;
+          font-size: 18px;
+        }
+        
+        .store-total {
+          font-weight: bold;
+        }
+        
+        .vendor-list {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        
+        .vendor-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        
+        .vendor-name {
+          flex: 1;
+        }
+        
+        .vendor-input {
+          display: flex;
+          align-items: center;
+        }
+        
+        .vendor-input input {
+          width: 120px;
+          padding: 5px;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+          text-align: right;
+          margin-right: 5px;
+        }
+        
         .loading-overlay {
           position: absolute;
           top: 0;
           left: 0;
           right: 0;
           bottom: 0;
-          background-color: rgba(255, 255, 255, 0.4);
+          background-color: rgba(255,255,255,0.7);
           display: flex;
           justify-content: center;
           align-items: center;
-          z-index: 100;
-          pointer-events: none;
         }
         
         .loading-spinner {
           width: 40px;
           height: 40px;
-          border: 4px solid rgba(0, 0, 0, 0.1);
-          border-top: 4px solid #3498db;
+          border: 3px solid #f3f3f3;
+          border-top: 3px solid #3498db;
           border-radius: 50%;
-          animation: spin 0.8s linear infinite;
-          box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+          animation: spin 1s linear infinite;
         }
         
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
-        }
-        
-        /* 입력필드 스타일 개선 */
-        .amount-input {
-          width: 100%;
-          padding: 4px 8px;
-          border: 1px solid #ccc;
-          border-radius: 4px;
-          text-align: right;
-          font-size: 14px;
-        }
-        
-        .amount-input:focus {
-          border-color: #007bff;
-          outline: none;
-          box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-        }
-        
-        .amount-input-wrapper {
-          display: flex;
-          align-items: center;
-          width: 150px;
-        }
-        
-        .amount-unit {
-          margin-left: 4px;
-          white-space: nowrap;
-        }
-        
-        /* 매장 카드 스타일 개선 */
-        .store-total-card {
-          background-color: white;
-          border-radius: 8px;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-          padding: 12px;
-          margin: 8px;
-          min-width: 260px;
-          max-width: 300px;
-          flex-shrink: 0;
-        }
-        
-        .store-name {
-          font-weight: bold;
-          font-size: 16px;
-          padding-bottom: 8px;
-          margin-bottom: 8px;
-          border-bottom: 1px solid #eee;
-        }
-        
-        .store-details {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-        }
-        
-        .amount-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-        
-        .amount-label {
-          font-size: 14px;
-        }
-        
-        .amount-value {
-          font-weight: bold;
-          text-align: right;
-        }
-        
-        .store-cards-scroll {
-          display: flex;
-          overflow-x: auto;
-          padding: 8px 0;
-          margin-bottom: 16px;
-          scrollbar-width: thin;
-        }
-        
-        .amount-row.vendor {
-          margin-left: 8px;
-          font-size: 13px;
         }
       `}</style>
     </div>
