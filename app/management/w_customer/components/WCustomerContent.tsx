@@ -2,8 +2,6 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/utils/supabase';
-import SimpleModal from './SimpleModal';
-import CustomerDetailModal from './CustomerDetailModal';
 
 interface WCustomerContentProps {
   statusFilter: string;
@@ -11,6 +9,8 @@ interface WCustomerContentProps {
   onCustomerCreated: () => void;
   onLoadingChange: (loading: boolean) => void;
   onErrorChange: (error: string | null) => void;
+  onRoomSelect?: (roomNo: number) => void;
+  onCustomerSelect?: (customer: CustomerData) => void;
 }
 
 interface CustomerData {
@@ -36,7 +36,9 @@ export default function WCustomerContent({
   statusFilter, 
   onCustomerCreated, 
   onLoadingChange, 
-  onErrorChange 
+  onErrorChange,
+  onRoomSelect,
+  onCustomerSelect
 }: WCustomerContentProps) {
   const [customers, setCustomers] = useState<CustomerData[]>([]);
   const [loading, setLoading] = useState(false);
@@ -225,26 +227,27 @@ export default function WCustomerContent({
                       </span>
                     )}
                   </td>
-                  <td className="col-action whitespace-nowrap py-3 px-4 text-center text-sm">
+                  <td className="col-action py-3 px-4 text-sm text-gray-500 text-right">
                     {item.isOccupied ? (
-                      <button
-                        type="button"
-                        onClick={() => item.customer && openDetailModal(item.customer.id)}
-                        className="btn-sm inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                      >
-                        상세보기
-                      </button>
+                      <div className="flex space-x-2 justify-center">
+                        <button
+                          type="button"
+                          onClick={() => item.customer && onCustomerSelect ? onCustomerSelect(item.customer) : null}
+                          className="btn-sm inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                        >
+                          상세 보기
+                        </button>
+                      </div>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() => openModal(item.roomNo as number)}
-                        className="btn-sm inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M10 3a1 1 0 00-1 1v5H4a1 1 0 100 2h5v5a1 1 0 102 0v-5h5a1 1 0 100-2h-5V4a1 1 0 00-1-1z" clipRule="evenodd" />
-                        </svg>
-                        등록하기
-                      </button>
+                      <div className="flex justify-center">
+                        <button
+                          type="button"
+                          onClick={() => onRoomSelect ? onRoomSelect(item.roomNo as number) : openModal(item.roomNo as number)}
+                          className="btn-sm inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                        >
+                          등록하기
+                        </button>
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -269,23 +272,6 @@ export default function WCustomerContent({
           </tbody>
         </table>
       </div>
-
-      {/* 등록 모달 */}
-      <SimpleModal 
-        isOpen={modalOpen} 
-        onClose={() => setModalOpen(false)} 
-        onCustomerCreated={handleCustomerCreated}
-        initialRoomNo={selectedRoomNo}
-      />
-
-      {/* 고객 상세 모달 */}
-      {selectedCustomer && (
-        <CustomerDetailModal
-          isOpen={detailModalOpen}
-          onClose={() => setDetailModalOpen(false)}
-          customer={selectedCustomer}
-        />
-      )}
     </>
   );
 } 

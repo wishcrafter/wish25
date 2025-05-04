@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import PageLayout from '@/app/components/PageLayout';
 import WCustomerContent from './components/WCustomerContent';
 import SimpleModal from './components/SimpleModal';
+import CustomerDetailModal from './components/CustomerDetailModal';
 
 export default function WCustomerPage() {
   const [loading, setLoading] = useState(false);
@@ -11,15 +12,42 @@ export default function WCustomerPage() {
   const [statusFilter, setStatusFilter] = useState<string>('입실');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
+  const [selectedRoom, setSelectedRoom] = useState<number | undefined>(undefined);
+  const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
 
   // 고객 등록 완료 후 새로고침 트리거
   const handleCustomerCreated = () => {
     setRefreshTrigger(prev => prev + 1);
   };
 
+  // 방번호로 고객 등록 모달 열기
+  const openModalWithRoom = (roomNo: number) => {
+    setSelectedRoom(roomNo);
+    setModalOpen(true);
+  };
+
+  // 고객 상세보기 모달 열기
+  const openDetailModal = (customer: any) => {
+    setSelectedCustomer(customer);
+    setDetailModalOpen(true);
+  };
+
   // 상태 필터 변경 핸들러
   const handleStatusFilterChange = (status: string) => {
     setStatusFilter(status);
+  };
+
+  // 모달 창 닫기
+  const closeModal = () => {
+    setModalOpen(false);
+    setSelectedRoom(undefined);
+  };
+
+  // 상세보기 모달 닫기
+  const closeDetailModal = () => {
+    setDetailModalOpen(false);
+    setSelectedCustomer(null);
   };
 
   // 상단 액션 버튼
@@ -69,14 +97,25 @@ export default function WCustomerPage() {
           onCustomerCreated={handleCustomerCreated}
           onLoadingChange={setLoading}
           onErrorChange={setError}
+          onRoomSelect={openModalWithRoom}
+          onCustomerSelect={openDetailModal}
         />
       </div>
 
       {/* 고객 등록 모달 */}
       <SimpleModal
         isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={closeModal}
         onCustomerCreated={handleCustomerCreated}
+        initialRoomNo={selectedRoom}
+      />
+      
+      {/* 고객 상세보기 모달 */}
+      <CustomerDetailModal 
+        isOpen={detailModalOpen} 
+        onClose={closeDetailModal} 
+        customer={selectedCustomer}
+        onCustomerUpdated={handleCustomerCreated}
       />
     </PageLayout>
   );
