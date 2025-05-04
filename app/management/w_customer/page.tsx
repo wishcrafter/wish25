@@ -54,16 +54,29 @@ export default function WCustomerPage() {
   const actions = (
     <div className="flex space-x-2">
       <button 
-        className="btn btn-primary flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
+        className="btn btn-primary px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
         onClick={() => setModalOpen(true)}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M10 3a1 1 0 00-1 1v5H4a1 1 0 100 2h5v5a1 1 0 102 0v-5h5a1 1 0 100-2h-5V4a1 1 0 00-1-1z" clipRule="evenodd" />
-        </svg>
         고객 등록
       </button>
     </div>
   );
+
+  // 상태별 배경 및 텍스트 색상
+  const getStatusStyle = (status: string) => {
+    switch (status) {
+      case '입실':
+        return 'bg-green-100 text-green-800 hover:bg-green-200 ring-green-500';
+      case '퇴실':
+        return 'bg-red-100 text-red-800 hover:bg-red-200 ring-red-500';
+      case '예약':
+        return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 ring-yellow-500';
+      case '전체':
+        return 'bg-blue-100 text-blue-800 hover:bg-blue-200 ring-blue-500';
+      default:
+        return 'bg-gray-100 text-gray-700 hover:bg-gray-200 ring-gray-500';
+    }
+  };
 
   return (
     <PageLayout 
@@ -81,8 +94,8 @@ export default function WCustomerPage() {
                 onClick={() => handleStatusFilterChange(status)}
                 className={`filter-btn px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
                   statusFilter === status 
-                    ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-500 ring-offset-2' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? `${getStatusStyle(status)} shadow-sm ring-2 ring-offset-2` 
+                    : `bg-gray-100 text-gray-700 hover:bg-gray-200`
                 }`}
               >
                 {status}

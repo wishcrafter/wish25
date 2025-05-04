@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/utils/supabase';
 
 interface CustomerProps {
@@ -28,18 +28,15 @@ interface CustomerDetailModalProps {
 }
 
 export default function CustomerDetailModal({ isOpen, onClose, customer, onCustomerUpdated }: CustomerDetailModalProps) {
-  const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [editedCustomer, setEditedCustomer] = useState<CustomerProps>({...customer});
-
-  // 편집 모드 전환
-  const toggleEditMode = () => {
-    if (isEditing) {
-      // 편집 취소 시 원래 값으로 복원
+  
+  // 고객 정보가 바뀌면 편집 정보도 업데이트
+  useEffect(() => {
+    if (isOpen && customer) {
       setEditedCustomer({...customer});
     }
-    setIsEditing(!isEditing);
-  };
+  }, [isOpen, customer]);
 
   // 금액 입력 시 자동 콤마 추가
   const handleDepositChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -55,6 +52,14 @@ export default function CustomerDetailModal({ isOpen, onClose, customer, onCusto
     setEditedCustomer({
       ...editedCustomer, 
       monthly_fee: value ? parseInt(value) : 0
+    });
+  };
+  
+  const handleFirstFeeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/[^\d]/g, '');
+    setEditedCustomer({
+      ...editedCustomer, 
+      first_fee: value ? parseInt(value) : 0
     });
   };
 
@@ -79,6 +84,7 @@ export default function CustomerDetailModal({ isOpen, onClose, customer, onCusto
           room_no: editedCustomer.room_no,
           deposit: editedCustomer.deposit,
           monthly_fee: editedCustomer.monthly_fee,
+          first_fee: editedCustomer.first_fee,
           status: editedCustomer.status,
           move_in_date: editedCustomer.move_in_date,
           move_out_date: editedCustomer.move_out_date,
@@ -92,7 +98,6 @@ export default function CustomerDetailModal({ isOpen, onClose, customer, onCusto
       if (error) throw error;
       
       if (onCustomerUpdated) onCustomerUpdated();
-      setIsEditing(false);
       alert('고객 정보가 수정되었습니다.');
     } catch (err) {
       console.error('고객 정보 수정 오류:', err);
@@ -119,7 +124,7 @@ export default function CustomerDetailModal({ isOpen, onClose, customer, onCusto
     <div className="modal-backdrop">
       <div className="modal-content">
         <div className="modal-header">
-          <h2>{customer.room_no}호 {customer.name} {isEditing ? '수정' : '상세정보'}</h2>
+          <h2>{customer.room_no}호 {customer.name} 정보 수정</h2>
           <button
             className="modal-close"
             onClick={onClose}
@@ -131,186 +136,135 @@ export default function CustomerDetailModal({ isOpen, onClose, customer, onCusto
           <div className="modal-body">
             <div className="grid grid-cols-2 gap-4">
               <div className="form-group">
-                <label>이름</label>
-                {isEditing ? (
-                  <input 
-                    type="text" 
-                    value={editedCustomer.name}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
-                    required
-                  />
-                ) : (
-                  <span className="form-value">{customer.name}</span>
-                )}
+                <label>이름 *</label>
+                <input 
+                  type="text" 
+                  value={editedCustomer.name}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  required
+                />
               </div>
               
               <div className="form-group">
-                <label>방 번호</label>
-                {isEditing ? (
-                  <input 
-                    type="number" 
-                    value={editedCustomer.room_no || ''}
-                    onChange={(e) => handleInputChange('room_no', parseInt(e.target.value))}
-                    min="1"
-                    max="15"
-                    required
-                  />
-                ) : (
-                  <span className="form-value">{customer.room_no || '-'}</span>
-                )}
+                <label>방 번호 *</label>
+                <input 
+                  type="number" 
+                  value={editedCustomer.room_no || ''}
+                  onChange={(e) => handleInputChange('room_no', parseInt(e.target.value))}
+                  min="1"
+                  max="15"
+                  required
+                />
               </div>
               
               <div className="form-group">
                 <label>보증금</label>
-                {isEditing ? (
-                  <input 
-                    type="text" 
-                    value={formatPrice(editedCustomer.deposit)}
-                    onChange={handleDepositChange}
-                    placeholder="0"
-                  />
-                ) : (
-                  <span className="form-value">{formatPrice(customer.deposit)}원</span>
-                )}
+                <input 
+                  type="text" 
+                  value={formatPrice(editedCustomer.deposit)}
+                  onChange={handleDepositChange}
+                  placeholder="0"
+                />
               </div>
               
               <div className="form-group">
                 <label>월세</label>
-                {isEditing ? (
-                  <input 
-                    type="text" 
-                    value={formatPrice(editedCustomer.monthly_fee)}
-                    onChange={handleMonthlyChange}
-                    placeholder="0"
-                  />
-                ) : (
-                  <span className="form-value">{formatPrice(customer.monthly_fee)}원</span>
-                )}
+                <input 
+                  type="text" 
+                  value={formatPrice(editedCustomer.monthly_fee)}
+                  onChange={handleMonthlyChange}
+                  placeholder="0"
+                />
+              </div>
+              
+              <div className="form-group">
+                <label>첫달 월세</label>
+                <input 
+                  type="text" 
+                  value={formatPrice(editedCustomer.first_fee)}
+                  onChange={handleFirstFeeChange}
+                  placeholder="0"
+                />
               </div>
               
               <div className="form-group">
                 <label>상태</label>
-                {isEditing ? (
-                  <select
-                    value={editedCustomer.status}
-                    onChange={(e) => handleInputChange('status', e.target.value)}
-                  >
-                    <option value="입실">입실</option>
-                    <option value="퇴실">퇴실</option>
-                    <option value="예약">예약</option>
-                  </select>
-                ) : (
-                  <span className={`form-value status-badge ${
-                    customer.status === '입실' ? 'status-active' : 
-                    customer.status === '퇴실' ? 'status-inactive' : 
-                    'status-pending'
-                  }`}>{customer.status}</span>
-                )}
-              </div>
-              
-              <div className="form-group">
-                <label>연락처</label>
-                {isEditing ? (
-                  <input 
-                    type="text" 
-                    value={editedCustomer.phone || ''}
-                    onChange={(e) => handleInputChange('phone', e.target.value)}
-                    placeholder="010-0000-0000"
-                  />
-                ) : (
-                  <span className="form-value">{customer.phone || '-'}</span>
-                )}
+                <select
+                  value={editedCustomer.status}
+                  onChange={(e) => handleInputChange('status', e.target.value)}
+                >
+                  <option value="입실">입실</option>
+                  <option value="퇴실">퇴실</option>
+                  <option value="예약">예약</option>
+                </select>
               </div>
               
               <div className="form-group">
                 <label>입주일</label>
-                {isEditing ? (
-                  <input 
-                    type="date" 
-                    value={formatDate(editedCustomer.move_in_date)}
-                    onChange={(e) => handleInputChange('move_in_date', e.target.value)}
-                  />
-                ) : (
-                  <span className="form-value">{formatDate(customer.move_in_date)}</span>
-                )}
+                <input 
+                  type="date" 
+                  value={formatDate(editedCustomer.move_in_date)}
+                  onChange={(e) => handleInputChange('move_in_date', e.target.value)}
+                />
               </div>
               
               <div className="form-group">
                 <label>퇴실일</label>
-                {isEditing ? (
-                  <input 
-                    type="date" 
-                    value={formatDate(editedCustomer.move_out_date)}
-                    onChange={(e) => handleInputChange('move_out_date', e.target.value)}
-                  />
-                ) : (
-                  <span className="form-value">{formatDate(customer.move_out_date)}</span>
-                )}
+                <input 
+                  type="date" 
+                  value={formatDate(editedCustomer.move_out_date)}
+                  onChange={(e) => handleInputChange('move_out_date', e.target.value)}
+                />
+              </div>
+              
+              <div className="form-group">
+                <label>연락처</label>
+                <input 
+                  type="text" 
+                  value={editedCustomer.phone || ''}
+                  onChange={(e) => handleInputChange('phone', e.target.value)}
+                  placeholder="010-0000-0000"
+                />
               </div>
               
               <div className="form-group">
                 <label>추가 연락처</label>
-                {isEditing ? (
-                  <input 
-                    type="text" 
-                    value={editedCustomer.phone_sub || ''}
-                    onChange={(e) => handleInputChange('phone_sub', e.target.value)}
-                    placeholder="추가 연락처"
-                  />
-                ) : (
-                  <span className="form-value">{customer.phone_sub || '-'}</span>
-                )}
+                <input 
+                  type="text" 
+                  value={editedCustomer.phone_sub || ''}
+                  onChange={(e) => handleInputChange('phone_sub', e.target.value)}
+                  placeholder="추가 연락처"
+                />
               </div>
               
               <div className="form-group">
                 <label>주소</label>
-                {isEditing ? (
-                  <input 
-                    type="text" 
-                    value={editedCustomer.address || ''}
-                    onChange={(e) => handleInputChange('address', e.target.value)}
-                    placeholder="주소"
-                  />
-                ) : (
-                  <span className="form-value">{customer.address || '-'}</span>
-                )}
+                <input 
+                  type="text" 
+                  value={editedCustomer.address || ''}
+                  onChange={(e) => handleInputChange('address', e.target.value)}
+                  placeholder="주소"
+                />
               </div>
               
               <div className="form-group col-span-2">
                 <label>메모</label>
-                {isEditing ? (
-                  <textarea 
-                    rows={3}
-                    value={editedCustomer.memo || ''}
-                    onChange={(e) => handleInputChange('memo', e.target.value)}
-                    placeholder="특이사항이나 메모"
-                  ></textarea>
-                ) : (
-                  <span className="form-value">{customer.memo || '-'}</span>
-                )}
+                <textarea 
+                  rows={3}
+                  value={editedCustomer.memo || ''}
+                  onChange={(e) => handleInputChange('memo', e.target.value)}
+                  placeholder="특이사항이나 메모"
+                ></textarea>
               </div>
             </div>
           </div>
           <div className="modal-footer">
-            {isEditing ? (
-              <>
-                <button type="button" className="btn btn-secondary" onClick={toggleEditMode}>
-                  취소
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={loading}>
-                  {loading ? '저장 중...' : '저장'}
-                </button>
-              </>
-            ) : (
-              <>
-                <button type="button" className="btn btn-secondary" onClick={onClose}>
-                  닫기
-                </button>
-                <button type="button" className="btn btn-primary" onClick={toggleEditMode}>
-                  수정
-                </button>
-              </>
-            )}
+            <button type="button" className="btn btn-secondary" onClick={onClose}>
+              취소
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              {loading ? '저장 중...' : '저장'}
+            </button>
           </div>
         </form>
       </div>
@@ -417,29 +371,6 @@ export default function CustomerDetailModal({ isOpen, onClose, customer, onCusto
           outline: none;
           border-color: #3b82f6;
           box-shadow: 0 0 0 1px #3b82f6;
-        }
-        
-        .status-badge {
-          padding: 0.25rem 0.75rem;
-          border-radius: 1rem;
-          font-size: 0.75rem;
-          font-weight: 500;
-          display: inline-block;
-        }
-        
-        .status-active {
-          background-color: #d1fae5;
-          color: #065f46;
-        }
-        
-        .status-inactive {
-          background-color: #fee2e2;
-          color: #b91c1c;
-        }
-        
-        .status-pending {
-          background-color: #fef3c7;
-          color: #92400e;
         }
         
         .modal-footer {

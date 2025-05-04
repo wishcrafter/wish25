@@ -233,7 +233,7 @@ export default function WCustomerContent({
                         <button
                           type="button"
                           onClick={() => item.customer && onCustomerSelect ? onCustomerSelect(item.customer) : null}
-                          className="btn-sm inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                          className="btn-sm inline-flex px-3 py-1.5 text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                         >
                           상세 보기
                         </button>
