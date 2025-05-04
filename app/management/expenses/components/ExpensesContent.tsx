@@ -62,6 +62,40 @@ export default function ExpensesContent({
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  // 사용자가 현재 편집 중인 데이터만 따로 관리
+  const [editData, setEditData] = useState<{ [key: string]: string }>({});
+  
+  // 초기 데이터 로드 및 연도/월 변경 시 모든 입력값 초기화
+  useEffect(() => {
+    setEditData({});
+    setInputs({});
+    inputsRef.current = {};
+    setHasChanges(false);
+  }, [selectedYear, selectedMonth]);
+
+  // 데이터 변경 감지 (단순화)
+  useEffect(() => {
+    setHasChanges(Object.keys(editData).length > 0);
+  }, [editData]);
+
+  // 입력 처리 함수 - 완전히 새로 작성
+  const handleAmountChange = useCallback((storeId: number, vendorId: number, value: string) => {
+    // 입력값 직접 저장 (아무 변환 없이)
+    setEditData(prev => {
+      const key = `${storeId}-${vendorId}`;
+      
+      // 입력값이 있는 경우에만 상태에 추가
+      if (value.trim() !== '') {
+        return { ...prev, [key]: value };
+      } 
+      
+      // 입력값이 없으면 해당 키 제거
+      const newState = { ...prev };
+      delete newState[key];
+      return newState;
+    });
+  }, []);
+
   // 로딩 상태 변경 시 부모에게 전달
   useEffect(() => {
     if (onLoadingChange) {
@@ -94,19 +128,6 @@ export default function ExpensesContent({
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
   // 월 옵션 생성 (number 타입)
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
-
-  // 1. 연도/월 변경 시 inputs 초기화
-  useEffect(() => {
-    setInputs({});
-    inputsRef.current = {};
-    setHasChanges(false);
-  }, [selectedYear, selectedMonth]);
-
-  // 2. 입력값 변경 시 저장버튼 활성화
-  useEffect(() => {
-    const hasEntries = Object.keys(inputs).length > 0;
-    setHasChanges(hasEntries);
-  }, [inputs]);
 
   // 데이터 fetch (연도/월 변경 시 한 번에) - 데이터 매핑 개선
   const fetchAll = useCallback(async () => {
@@ -229,108 +250,74 @@ export default function ExpensesContent({
     fetchAll();
   }, [fetchAll]);
 
-  // 가장 단순한 입력 처리 함수 - 연월 포함 키 사용
-  const handleAmountChange = useCallback((storeId: number, vendorId: number, value: string) => {
-    // 연도와 월을 포함한 고유 키 생성
-    const key = `${selectedYear}-${selectedMonth}-${storeId}-${vendorId}`;
-    
-    // 현재 입력값 상태 복사
-    const newInputs = { ...inputs };
-    
-    // 값 설정 (검증 없이 그대로)
-    newInputs[key] = value;
-    
-    // 입력상태 업데이트
-    setInputs(newInputs);
-    inputsRef.current = newInputs;
-    setHasChanges(true);
-    
-    console.log(`입력 - 연도:${selectedYear}, 월:${selectedMonth}, 매장:${storeId}, 거래처:${vendorId}, 값:${value}, 키:${key}`);
-  }, [inputs, selectedYear, selectedMonth]);
-
-  // 저장 함수 - 연월 포함 키 구조 사용
+  // 저장 함수 - 완전히 새로 작성
   const handleSave = useCallback(async () => {
+    if (Object.keys(editData).length === 0) {
+      return; // 변경사항 없으면 종료
+    }
+    
     setIsSaving(true);
     setLoading(true);
     
     try {
       const promises = [];
-      console.log(`저장 시작 - 연도:${selectedYear}, 월:${selectedMonth}, 입력값 수:${Object.keys(inputs).length}`);
       
-      // 현재 입력값을 순회
-      for (const key in inputs) {
-        // 현재 선택된 연월에 해당하는 데이터만 처리
-        if (key.startsWith(`${selectedYear}-${selectedMonth}-`)) {
-          // 입력값이 있는 경우만 처리
-          if (inputs[key]) {
-            // 키에서 정보 추출 (연도-월-매장-거래처)
-            const parts = key.split('-');
-            const storeId = Number(parts[2]);
-            const vendorId = Number(parts[3]);
-            
-            // 문자열 그대로 숫자로 변환
-            const amount = Number(inputs[key]);
-            
-            console.log(`저장 처리 - 키:${key}, 매장:${storeId}, 거래처:${vendorId}, 금액:${amount}`);
-            
-            // 숫자가 유효한 경우만 처리
-            if (!isNaN(amount) && !isNaN(storeId) && !isNaN(vendorId)) {
-              // 기존 데이터 확인
-              const existingRecord = expensesAll.find(e => 
-                e.store_id === storeId && 
-                e.vendor_id === vendorId &&
-                e.year === selectedYear && 
-                e.month === selectedMonth
-              );
-              
-              if (existingRecord) {
-                // 업데이트
-                console.log(`업데이트 - ID:${existingRecord.id}, 금액:${amount}`);
-                promises.push(
-                  updateData('expenses', { id: existingRecord.id }, { amount })
-                );
-              } else {
-                // 신규 등록
-                console.log(`신규 등록 - 매장:${storeId}, 거래처:${vendorId}, 금액:${amount}`);
-                promises.push(
-                  insertData('expenses', {
-                    year: selectedYear,
-                    month: selectedMonth,
-                    store_id: storeId,
-                    vendor_id: vendorId,
-                    amount
-                  })
-                );
-              }
-            }
-          }
+      // 편집 데이터만 처리
+      for (const key in editData) {
+        const [storeId, vendorId] = key.split('-').map(Number);
+        const amountStr = editData[key].replace(/,/g, '').trim(); // 쉼표 제거
+        const amount = Number(amountStr);
+        
+        if (isNaN(amount) || amount < 0) {
+          console.error(`유효하지 않은 금액: ${editData[key]}`);
+          continue;
+        }
+        
+        // 현재 선택된 연월에 해당하는 기존 데이터 찾기
+        const existingRecord = expensesAll.find(e => 
+          e.store_id === storeId && 
+          e.vendor_id === vendorId &&
+          e.year === selectedYear && 
+          e.month === selectedMonth
+        );
+        
+        if (existingRecord) {
+          // 기존 데이터 업데이트
+          console.log(`${selectedYear}년 ${selectedMonth}월 데이터 업데이트: ${storeId}-${vendorId}, 금액: ${amount}`);
+          promises.push(
+            updateData('expenses', { id: existingRecord.id }, { amount })
+          );
+        } else {
+          // 신규 데이터 삽입
+          console.log(`${selectedYear}년 ${selectedMonth}월 데이터 신규 저장: ${storeId}-${vendorId}, 금액: ${amount}`);
+          promises.push(
+            insertData('expenses', {
+              year: selectedYear,
+              month: selectedMonth,
+              store_id: storeId,
+              vendor_id: vendorId,
+              amount
+            })
+          );
         }
       }
       
-      // 처리할 작업이 있는 경우만 실행
-      if (promises.length > 0) {
-        // 모든 요청 실행
-        const results = await Promise.all(promises);
-        console.log(`저장 완료 - 총 ${promises.length}개 항목 처리됨`);
-        
-        // 상태 초기화 및 새로고침
-        setInputs({});
-        inputsRef.current = {};
-        setHasChanges(false);
-        await fetchAll();
-      } else {
-        console.log('저장할 데이터가 없습니다.');
-        setIsSaving(false);
-        setLoading(false);
-      }
+      // 모든 요청 처리
+      await Promise.all(promises);
+      console.log(`${selectedYear}년 ${selectedMonth}월 데이터 저장 완료: ${promises.length}개 항목`);
+      
+      // 상태 초기화 및 데이터 새로고침
+      setEditData({});
+      await fetchAll();
       
     } catch (error) {
       console.error('저장 중 오류:', error);
-      setError('저장 중 오류가 발생했습니다.');
+      setError(`${selectedYear}년 ${selectedMonth}월 데이터 저장 중 오류가 발생했습니다.`);
+    } finally {
       setIsSaving(false);
       setLoading(false);
     }
-  }, [fetchAll, inputs, expensesAll, selectedYear, selectedMonth]);
+  }, [editData, fetchAll, expensesAll, selectedYear, selectedMonth]);
 
   // 저장 함수 레퍼런스 공유
   useEffect(() => {
@@ -339,7 +326,7 @@ export default function ExpensesContent({
     }
   }, [handleSave, onSaveFnChange]);
 
-  // 지난 달 복사 - 연월 포함 키 구조 사용
+  // 지난 달 복사 - 새 방식으로 수정
   const handleCopyPrev = useCallback(async () => {
     setLoading(true);
     
@@ -357,18 +344,18 @@ export default function ExpensesContent({
         return;
       }
       
-      // 새 입력값으로 설정 (직접 string으로 변환)
-      const newInputs: { [key: string]: string } = {};
+      // 새 입력값 설정
+      const newEditData: { [key: string]: string } = {};
+      
       prevExpenses.forEach(expense => {
-        // 현재 선택된 연월로 키 생성 (이전 달 데이터를 현재 달에 복사)
-        const key = `${selectedYear}-${selectedMonth}-${expense.store_id}-${expense.vendor_id}`;
-        newInputs[key] = expense.amount.toString();
-        console.log(`지난달 복사 - 소스:${prevYear}-${prevMonth}, 대상:${selectedYear}-${selectedMonth}, 키:${key}, 금액:${expense.amount}`);
+        // 단순 키 생성 (매장ID-거래처ID)
+        const key = `${expense.store_id}-${expense.vendor_id}`;
+        newEditData[key] = expense.amount.toString();
+        console.log(`지난달 복사: ${prevYear}년 ${prevMonth}월 → ${selectedYear}년 ${selectedMonth}월, ${key}: ${expense.amount}`);
       });
     
-      // inputs 상태와 참조 모두 업데이트
-      inputsRef.current = newInputs;
-      setInputs(newInputs);
+      // 편집 데이터 업데이트
+      setEditData(newEditData);
       setHasChanges(true);
     
     } catch (err) {
@@ -416,7 +403,7 @@ export default function ExpensesContent({
     return foundExpense;
   }, [expensesAll, selectedYear, selectedMonth]);
 
-  // 점포별 비용 계산 (이번달) - 연월 포함 키 구조 사용
+  // 점포별 비용 계산 (이번달) - 새 방식
   const calculateStoreExpenses = useCallback((storeId: number) => {
     // 현재 선택된 연월에 해당하는 비용만 필터링
     const storeExpenses = expensesAll.filter(e => 
@@ -431,16 +418,18 @@ export default function ExpensesContent({
     let total = 0;
     
     storeVendors.forEach(vendor => {
-      // 연월 포함 키 사용
-      const key = `${selectedYear}-${selectedMonth}-${storeId}-${vendor.id}`;
-      const inputValue = inputsRef.current[key] || '';
-      const inputAmount = inputValue ? Number(inputValue) : 0;
+      // 단순 키 (매장ID-거래처ID)
+      const key = `${storeId}-${vendor.id}`;
       
-      if (inputValue) {
-        // 입력값이 있으면 그 값 사용
-        total += inputAmount;
+      if (editData[key]) {
+        // 편집 중인 값이 있으면 그 값 사용
+        const editValue = editData[key].replace(/,/g, '').trim();
+        const amount = Number(editValue);
+        if (!isNaN(amount)) {
+          total += amount;
+        }
       } else {
-        // 입력값이 없으면 DB값 사용
+        // 편집 값이 없으면 DB 값 사용
         const dbExpense = storeExpenses.find(e => e.vendor_id === vendor.id);
         total += dbExpense?.amount || 0;
       }
@@ -449,15 +438,15 @@ export default function ExpensesContent({
     return {
       total,
       expenses: storeVendors.map(vendor => {
-          const expense = storeExpenses.find(e => e.vendor_id === vendor.id);
-          return {
-            vendor_id: vendor.id,
-            category: vendor.category,
-            amount: expense?.amount || 0
-          };
-        })
+        const expense = storeExpenses.find(e => e.vendor_id === vendor.id);
+        return {
+          vendor_id: vendor.id,
+          category: vendor.category,
+          amount: expense?.amount || 0
+        };
+      })
     };
-  }, [expensesAll, selectedYear, selectedMonth, vendors]);
+  }, [expensesAll, selectedYear, selectedMonth, vendors, editData]);
 
   // 지난달 비용 계산
   const calculatePreviousMonthStoreExpenses = useCallback((storeId: number) => {
@@ -565,10 +554,15 @@ export default function ExpensesContent({
             vendorsList.map(vendor => {
               // 현재 달인 경우 편집 가능한 입력 필드 표시
               if (isCurrentMonth) {
-                // 연도와 월을 포함한 고유 키 생성
-                const key = `${selectedYear}-${selectedMonth}-${store.store_id}-${vendor.id}`;
+                // 단순 키 (매장ID-거래처ID)
+                const key = `${store.store_id}-${vendor.id}`;
+                
+                // DB에 저장된 기존 금액 (없으면 0)
                 const dbExpense = getCurrentMonthExpense(store.store_id, vendor.id);
                 const dbAmount = dbExpense?.amount || 0;
+                
+                // 편집 중인 값 또는 빈 문자열
+                const editValue = editData[key] || '';
                 
                 return (
                   <div key={vendor.id} className="amount-row vendor">
@@ -577,8 +571,8 @@ export default function ExpensesContent({
                       <input
                         type="text"
                         className="amount-input"
-                        defaultValue={inputs[key] || ''}
-                        placeholder={String(dbAmount)}
+                        value={editValue}
+                        placeholder={dbAmount ? dbAmount.toLocaleString('ko-KR') : '0'}
                         onChange={(e) => handleAmountChange(store.store_id, vendor.id, e.target.value)}
                       />
                       <span className="amount-unit">원</span>
