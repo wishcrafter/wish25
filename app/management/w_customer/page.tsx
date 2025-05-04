@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PageLayout from '@/app/components/PageLayout';
 import WCustomerContent from './components/WCustomerContent';
 import SimpleModal from './components/SimpleModal';
@@ -15,6 +15,11 @@ export default function WCustomerPage() {
   // 고객 등록 완료 후 새로고침 트리거
   const handleCustomerCreated = () => {
     setRefreshTrigger(prev => prev + 1);
+  };
+
+  // 상태 필터 변경 핸들러
+  const handleStatusFilterChange = (status: string) => {
+    setStatusFilter(status);
   };
 
   // 상단 액션 버튼
@@ -45,7 +50,7 @@ export default function WCustomerPage() {
             {['입실', '퇴실', '예약', '전체'].map(status => (
               <button
                 key={status}
-                onClick={() => setStatusFilter(status)}
+                onClick={() => handleStatusFilterChange(status)}
                 className={`filter-btn px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
                   statusFilter === status 
                     ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-500 ring-offset-2' 
@@ -60,14 +65,14 @@ export default function WCustomerPage() {
         
         <WCustomerContent
           statusFilter={statusFilter}
-          onStatusFilterChange={setStatusFilter}
+          onStatusFilterChange={handleStatusFilterChange}
           onCustomerCreated={handleCustomerCreated}
           onLoadingChange={setLoading}
           onErrorChange={setError}
         />
       </div>
 
-      {/* 간단한 모달 */}
+      {/* 고객 등록 모달 */}
       <SimpleModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
