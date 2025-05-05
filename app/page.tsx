@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
 // 정기업무 월별 리스트 타입
 interface MonthlyTasks {
@@ -35,15 +36,83 @@ const initialData: HomeData = {
   }
 };
 
-// 현재 활성화된 월 (기본값: 현재 월)
-const currentMonth = new Date().getMonth() + 1;
+// TaskList 컴포넌트 - 드래그 앤 드롭 가능한 태스크 목록
+function TaskList({
+  tasks,
+  droppableId,
+  onUpdate,
+  onDelete,
+  onDragEnd,
+  placeholder
+}: {
+  tasks: string[];
+  droppableId: string;
+  onUpdate: (index: number, value: string) => void;
+  onDelete: (index: number) => void;
+  onDragEnd: (result: any) => void;
+  placeholder: string;
+}) {
+  return (
+    <DragDropContext onDragEnd={onDragEnd}>
+      <Droppable droppableId={droppableId}>
+        {(provided: any) => (
+          <div
+            className="tasks-list"
+            {...provided.droppableProps}
+            ref={provided.innerRef}
+          >
+            {tasks.map((task, index) => (
+              <Draggable key={`${droppableId}-${index}`} draggableId={`${droppableId}-${index}`} index={index}>
+                {(provided: any) => (
+                  <div
+                    className="task-item"
+                    ref={provided.innerRef}
+                    {...provided.draggableProps}
+                    {...provided.dragHandleProps}
+                  >
+                    <div className="drag-handle">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="8" cy="8" r="1" />
+                        <circle cx="8" cy="16" r="1" />
+                        <circle cx="16" cy="8" r="1" />
+                        <circle cx="16" cy="16" r="1" />
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      value={task}
+                      onChange={(e) => onUpdate(index, e.target.value)}
+                      placeholder={placeholder}
+                    />
+                    <button className="delete-button" onClick={() => onDelete(index)}>
+                      삭제
+                    </button>
+                  </div>
+                )}
+              </Draggable>
+            ))}
+            {provided.placeholder}
+          </div>
+        )}
+      </Droppable>
+    </DragDropContext>
+  );
+}
 
+// 클라이언트 컴포넌트로 분리하여 하이드레이션 오류 방지
 export default function Home() {
+  // 클라이언트 사이드 렌더링임을 확인
+  const [isClient, setIsClient] = useState(false);
+  
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   // localStorage에서 데이터 불러오기
   const [homeData, setHomeData] = useLocalStorage<HomeData>('home-tasks', initialData);
   
   // 활성화된 월 상태
-  const [activeMonth, setActiveMonth] = useState<number>(currentMonth);
+  const [activeMonth, setActiveMonth] = useState<number>(new Date().getMonth() + 1);
   
   // 당면업무 처리 함수들
   const addUrgentTask = () => {
@@ -118,6 +187,62 @@ export default function Home() {
     });
   };
   
+  // 드래그 앤 드롭 처리 함수 (당면업무)
+  const handleUrgentDragEnd = (result: any) => {
+    if (!result.destination) return;
+    
+    const items = Array.from(homeData.urgentTasks);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+    
+    setHomeData((prev: HomeData) => ({
+      ...prev,
+      urgentTasks: items
+    }));
+  };
+  
+  // 드래그 앤 드롭 처리 함수 (일상업무)
+  const handleRoutineDragEnd = (result: any) => {
+    if (!result.destination) return;
+    
+    const items = Array.from(homeData.routineTasks);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+    
+    setHomeData((prev: HomeData) => ({
+      ...prev,
+      routineTasks: items
+    }));
+  };
+  
+  // 드래그 앤 드롭 처리 함수 (정기업무)
+  const handleMonthlyDragEnd = (result: any) => {
+    if (!result.destination) return;
+    
+    const items = Array.from(homeData.monthlyTasks[activeMonth] || []);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+    
+    setHomeData((prev: HomeData) => {
+      const newMonthlyTasks = { ...prev.monthlyTasks };
+      newMonthlyTasks[activeMonth] = items;
+      return {
+        ...prev,
+        monthlyTasks: newMonthlyTasks
+      };
+    });
+  };
+  
+  // 서버 사이드 렌더링 중에는 초기 컨텐츠만 표시
+  if (!isClient) {
+    return (
+      <div className="page-container">
+        <h1 className="page-title">업무 관리</h1>
+        <div className="loading">로딩 중...</div>
+      </div>
+    );
+  }
+  
   return (
     <div className="page-container">
       <h1 className="page-title">업무 관리</h1>
@@ -129,21 +254,14 @@ export default function Home() {
             <h2>당면업무</h2>
             <button className="add-button" onClick={addUrgentTask}>+ 추가</button>
           </div>
-          <div className="tasks-list">
-            {homeData.urgentTasks.map((task, index) => (
-              <div key={`urgent-${index}`} className="task-item">
-                <input
-                  type="text"
-                  value={task}
-                  onChange={(e) => updateUrgentTask(index, e.target.value)}
-                  placeholder="당면업무를 입력하세요"
-                />
-                <button className="delete-button" onClick={() => deleteUrgentTask(index)}>
-                  삭제
-                </button>
-              </div>
-            ))}
-          </div>
+          <TaskList
+            tasks={homeData.urgentTasks}
+            droppableId="urgent"
+            onUpdate={updateUrgentTask}
+            onDelete={deleteUrgentTask}
+            onDragEnd={handleUrgentDragEnd}
+            placeholder="당면업무를 입력하세요"
+          />
         </section>
         
         {/* 일상업무 섹션 */}
@@ -152,21 +270,14 @@ export default function Home() {
             <h2>일상업무</h2>
             <button className="add-button" onClick={addRoutineTask}>+ 추가</button>
           </div>
-          <div className="tasks-list">
-            {homeData.routineTasks.map((task, index) => (
-              <div key={`routine-${index}`} className="task-item">
-                <input
-                  type="text"
-                  value={task}
-                  onChange={(e) => updateRoutineTask(index, e.target.value)}
-                  placeholder="일상업무를 입력하세요"
-                />
-                <button className="delete-button" onClick={() => deleteRoutineTask(index)}>
-                  삭제
-                </button>
-              </div>
-            ))}
-          </div>
+          <TaskList
+            tasks={homeData.routineTasks}
+            droppableId="routine"
+            onUpdate={updateRoutineTask}
+            onDelete={deleteRoutineTask}
+            onDragEnd={handleRoutineDragEnd}
+            placeholder="일상업무를 입력하세요"
+          />
         </section>
         
         {/* 정기업무 섹션 */}
@@ -197,29 +308,26 @@ export default function Home() {
               </button>
             </div>
             
-            <div className="tasks-list">
-              {(homeData.monthlyTasks[activeMonth] || []).map((task, index) => (
-                <div key={`monthly-${activeMonth}-${index}`} className="task-item">
-                  <input
-                    type="text"
-                    value={task}
-                    onChange={(e) => updateMonthlyTask(activeMonth, index, e.target.value)}
-                    placeholder={`${activeMonth}월 정기업무를 입력하세요`}
-                  />
-                  <button 
-                    className="delete-button"
-                    onClick={() => deleteMonthlyTask(activeMonth, index)}
-                  >
-                    삭제
-                  </button>
-                </div>
-              ))}
-            </div>
+            <TaskList
+              tasks={homeData.monthlyTasks[activeMonth] || []}
+              droppableId={`monthly-${activeMonth}`}
+              onUpdate={(index, value) => updateMonthlyTask(activeMonth, index, value)}
+              onDelete={(index) => deleteMonthlyTask(activeMonth, index)}
+              onDragEnd={handleMonthlyDragEnd}
+              placeholder={`${activeMonth}월 정기업무를 입력하세요`}
+            />
           </div>
         </section>
       </div>
       
       <style jsx>{`
+        .loading {
+          padding: 2rem;
+          text-align: center;
+          font-size: 1.2rem;
+          color: #666;
+        }
+        
         .tasks-container {
           display: flex;
           flex-direction: column;
@@ -269,6 +377,21 @@ export default function Home() {
           display: flex;
           align-items: center;
           gap: 0.5rem;
+          padding: 0.5rem;
+          border: 1px solid #eee;
+          border-radius: 4px;
+          background-color: #fafafa;
+          cursor: grab;
+        }
+        
+        .task-item:hover {
+          background-color: #f0f0f0;
+        }
+        
+        .drag-handle {
+          color: #aaa;
+          cursor: grab;
+          padding: 0.25rem;
         }
         
         .task-item input {
