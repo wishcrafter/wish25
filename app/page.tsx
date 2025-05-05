@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
 // 정기업무 월별 리스트 타입
 interface MonthlyTasks {
@@ -36,66 +35,60 @@ const initialData: HomeData = {
   }
 };
 
-// TaskList 컴포넌트 - 드래그 앤 드롭 가능한 태스크 목록
+// TaskList 컴포넌트 - 업무 목록 표시
 function TaskList({
   tasks,
-  droppableId,
   onUpdate,
   onDelete,
-  onDragEnd,
+  onMoveUp,
+  onMoveDown,
   placeholder
 }: {
   tasks: string[];
-  droppableId: string;
   onUpdate: (index: number, value: string) => void;
   onDelete: (index: number) => void;
-  onDragEnd: (result: any) => void;
+  onMoveUp: (index: number) => void;
+  onMoveDown: (index: number) => void;
   placeholder: string;
 }) {
   return (
-    <DragDropContext onDragEnd={onDragEnd}>
-      <Droppable droppableId={droppableId}>
-        {(provided: any) => (
-          <div
-            className="tasks-list"
-            {...provided.droppableProps}
-            ref={provided.innerRef}
-          >
-            {tasks.map((task, index) => (
-              <Draggable key={`${droppableId}-${index}`} draggableId={`${droppableId}-${index}`} index={index}>
-                {(provided: any) => (
-                  <div
-                    className="task-item"
-                    ref={provided.innerRef}
-                    {...provided.draggableProps}
-                    {...provided.dragHandleProps}
-                  >
-                    <div className="drag-handle">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="8" cy="8" r="1" />
-                        <circle cx="8" cy="16" r="1" />
-                        <circle cx="16" cy="8" r="1" />
-                        <circle cx="16" cy="16" r="1" />
-                      </svg>
-                    </div>
-                    <input
-                      type="text"
-                      value={task}
-                      onChange={(e) => onUpdate(index, e.target.value)}
-                      placeholder={placeholder}
-                    />
-                    <button className="delete-button" onClick={() => onDelete(index)}>
-                      삭제
-                    </button>
-                  </div>
-                )}
-              </Draggable>
-            ))}
-            {provided.placeholder}
+    <div className="tasks-list">
+      {tasks.map((task, index) => (
+        <div key={`task-${index}`} className="task-item">
+          <input
+            type="text"
+            value={task}
+            onChange={(e) => onUpdate(index, e.target.value)}
+            placeholder={placeholder}
+          />
+          <div className="action-buttons">
+            <button 
+              className="move-button" 
+              onClick={() => onMoveUp(index)}
+              disabled={index === 0}
+              title="위로 이동"
+            >
+              ↑
+            </button>
+            <button 
+              className="move-button" 
+              onClick={() => onMoveDown(index)}
+              disabled={index === tasks.length - 1}
+              title="아래로 이동"
+            >
+              ↓
+            </button>
+            <button 
+              className="delete-button" 
+              onClick={() => onDelete(index)}
+              title="삭제"
+            >
+              ×
+            </button>
           </div>
-        )}
-      </Droppable>
-    </DragDropContext>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -137,6 +130,30 @@ export default function Home() {
     });
   };
   
+  const moveUrgentTaskUp = (index: number) => {
+    if (index === 0) return; // 이미 최상위면 이동 불가
+    
+    setHomeData((prev: HomeData) => {
+      const newTasks = [...prev.urgentTasks];
+      const temp = newTasks[index];
+      newTasks[index] = newTasks[index - 1];
+      newTasks[index - 1] = temp;
+      return { ...prev, urgentTasks: newTasks };
+    });
+  };
+  
+  const moveUrgentTaskDown = (index: number) => {
+    setHomeData((prev: HomeData) => {
+      const newTasks = [...prev.urgentTasks];
+      if (index >= newTasks.length - 1) return prev; // 이미 최하위면 이동 불가
+      
+      const temp = newTasks[index];
+      newTasks[index] = newTasks[index + 1];
+      newTasks[index + 1] = temp;
+      return { ...prev, urgentTasks: newTasks };
+    });
+  };
+  
   // 일상업무 처리 함수들
   const addRoutineTask = () => {
     setHomeData((prev: HomeData) => ({
@@ -156,6 +173,30 @@ export default function Home() {
   const deleteRoutineTask = (index: number) => {
     setHomeData((prev: HomeData) => {
       const newTasks = prev.routineTasks.filter((_: string, i: number) => i !== index);
+      return { ...prev, routineTasks: newTasks };
+    });
+  };
+  
+  const moveRoutineTaskUp = (index: number) => {
+    if (index === 0) return; // 이미 최상위면 이동 불가
+    
+    setHomeData((prev: HomeData) => {
+      const newTasks = [...prev.routineTasks];
+      const temp = newTasks[index];
+      newTasks[index] = newTasks[index - 1];
+      newTasks[index - 1] = temp;
+      return { ...prev, routineTasks: newTasks };
+    });
+  };
+  
+  const moveRoutineTaskDown = (index: number) => {
+    setHomeData((prev: HomeData) => {
+      const newTasks = [...prev.routineTasks];
+      if (index >= newTasks.length - 1) return prev; // 이미 최하위면 이동 불가
+      
+      const temp = newTasks[index];
+      newTasks[index] = newTasks[index + 1];
+      newTasks[index + 1] = temp;
       return { ...prev, routineTasks: newTasks };
     });
   };
@@ -187,49 +228,31 @@ export default function Home() {
     });
   };
   
-  // 드래그 앤 드롭 처리 함수 (당면업무)
-  const handleUrgentDragEnd = (result: any) => {
-    if (!result.destination) return;
-    
-    const items = Array.from(homeData.urgentTasks);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
-    
-    setHomeData((prev: HomeData) => ({
-      ...prev,
-      urgentTasks: items
-    }));
-  };
-  
-  // 드래그 앤 드롭 처리 함수 (일상업무)
-  const handleRoutineDragEnd = (result: any) => {
-    if (!result.destination) return;
-    
-    const items = Array.from(homeData.routineTasks);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
-    
-    setHomeData((prev: HomeData) => ({
-      ...prev,
-      routineTasks: items
-    }));
-  };
-  
-  // 드래그 앤 드롭 처리 함수 (정기업무)
-  const handleMonthlyDragEnd = (result: any) => {
-    if (!result.destination) return;
-    
-    const items = Array.from(homeData.monthlyTasks[activeMonth] || []);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
+  const moveMonthlyTaskUp = (month: number, index: number) => {
+    if (index === 0) return; // 이미 최상위면 이동 불가
     
     setHomeData((prev: HomeData) => {
       const newMonthlyTasks = { ...prev.monthlyTasks };
-      newMonthlyTasks[activeMonth] = items;
-      return {
-        ...prev,
-        monthlyTasks: newMonthlyTasks
-      };
+      const tasks = [...(newMonthlyTasks[month] || [])];
+      const temp = tasks[index];
+      tasks[index] = tasks[index - 1];
+      tasks[index - 1] = temp;
+      newMonthlyTasks[month] = tasks;
+      return { ...prev, monthlyTasks: newMonthlyTasks };
+    });
+  };
+  
+  const moveMonthlyTaskDown = (month: number, index: number) => {
+    setHomeData((prev: HomeData) => {
+      const newMonthlyTasks = { ...prev.monthlyTasks };
+      const tasks = [...(newMonthlyTasks[month] || [])];
+      if (index >= tasks.length - 1) return prev; // 이미 최하위면 이동 불가
+      
+      const temp = tasks[index];
+      tasks[index] = tasks[index + 1];
+      tasks[index + 1] = temp;
+      newMonthlyTasks[month] = tasks;
+      return { ...prev, monthlyTasks: newMonthlyTasks };
     });
   };
   
@@ -256,10 +279,10 @@ export default function Home() {
           </div>
           <TaskList
             tasks={homeData.urgentTasks}
-            droppableId="urgent"
             onUpdate={updateUrgentTask}
             onDelete={deleteUrgentTask}
-            onDragEnd={handleUrgentDragEnd}
+            onMoveUp={moveUrgentTaskUp}
+            onMoveDown={moveUrgentTaskDown}
             placeholder="당면업무를 입력하세요"
           />
         </section>
@@ -272,10 +295,10 @@ export default function Home() {
           </div>
           <TaskList
             tasks={homeData.routineTasks}
-            droppableId="routine"
             onUpdate={updateRoutineTask}
             onDelete={deleteRoutineTask}
-            onDragEnd={handleRoutineDragEnd}
+            onMoveUp={moveRoutineTaskUp}
+            onMoveDown={moveRoutineTaskDown}
             placeholder="일상업무를 입력하세요"
           />
         </section>
@@ -310,10 +333,10 @@ export default function Home() {
             
             <TaskList
               tasks={homeData.monthlyTasks[activeMonth] || []}
-              droppableId={`monthly-${activeMonth}`}
               onUpdate={(index, value) => updateMonthlyTask(activeMonth, index, value)}
               onDelete={(index) => deleteMonthlyTask(activeMonth, index)}
-              onDragEnd={handleMonthlyDragEnd}
+              onMoveUp={(index) => moveMonthlyTaskUp(activeMonth, index)}
+              onMoveDown={(index) => moveMonthlyTaskDown(activeMonth, index)}
               placeholder={`${activeMonth}월 정기업무를 입력하세요`}
             />
           </div>
@@ -381,17 +404,10 @@ export default function Home() {
           border: 1px solid #eee;
           border-radius: 4px;
           background-color: #fafafa;
-          cursor: grab;
         }
         
         .task-item:hover {
           background-color: #f0f0f0;
-        }
-        
-        .drag-handle {
-          color: #aaa;
-          cursor: grab;
-          padding: 0.25rem;
         }
         
         .task-item input {
@@ -402,13 +418,48 @@ export default function Home() {
           font-size: 1rem;
         }
         
+        .action-buttons {
+          display: flex;
+          gap: 0.25rem;
+        }
+        
+        .move-button {
+          background-color: #2196F3;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          font-size: 1.2rem;
+          font-weight: bold;
+        }
+        
+        .move-button:hover:not(:disabled) {
+          background-color: #0b7dda;
+        }
+        
+        .move-button:disabled {
+          background-color: #cccccc;
+          cursor: not-allowed;
+          opacity: 0.7;
+        }
+        
         .delete-button {
           background-color: #F44336;
           color: white;
           border: none;
           border-radius: 4px;
-          padding: 0.5rem;
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
           cursor: pointer;
+          font-size: 1.5rem;
         }
         
         .delete-button:hover {
