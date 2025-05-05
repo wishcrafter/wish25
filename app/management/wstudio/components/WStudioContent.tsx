@@ -58,7 +58,7 @@ const columnStyles = {
   room: 'col-number text-right min-w-[100px] max-w-[120px]',
   real_month: 'col-number text-right min-w-[100px] max-w-[120px]',
   real_sales: 'col-number text-center min-w-[100px] max-w-[120px]',
-  manage: 'col-text text-left min-w-[150px] max-w-[200px]'
+  manage: 'col-text text-left min-w-[200px]'
 } as const;
 
 export default function WStudioContent(props: WStudioContentProps) {
@@ -758,16 +758,23 @@ export default function WStudioContent(props: WStudioContentProps) {
   );
 
   return (
-    <div className="page-container" style={{ maxWidth: '100%', padding: '1rem', boxSizing: 'border-box', overflow: 'hidden', position: 'relative' }}>
+    <div className="page-container" style={{ maxWidth: '100%', padding: '0 0.25rem', boxSizing: 'border-box', overflow: 'hidden', position: 'relative' }}>
       {loading && <LoadingOverlay />}
       
       {error && (
-        <div className="error-state" style={{ margin: '1rem 0', padding: '1rem', backgroundColor: '#FEF2F2', borderRadius: '0.375rem', color: '#DC2626' }}>
+        <div className="error-state" style={{ margin: '0.5rem 0', padding: '0.5rem', backgroundColor: '#FEF2F2', borderRadius: '0.375rem', color: '#DC2626' }}>
           에러: {error}
         </div>
       )}
       
-      <div className="date-filters" style={{ width: '100%', boxSizing: 'border-box', marginBottom: '1rem' }}>
+      <div className="date-filters" style={{ 
+        width: '100%', 
+        boxSizing: 'border-box', 
+        marginBottom: '0.75rem',
+        marginTop: '0.5rem',
+        display: 'flex',
+        gap: '8px'
+      }}>
         <div className="select-wrapper">
           <select 
             value={selectedYear}
@@ -795,36 +802,44 @@ export default function WStudioContent(props: WStudioContentProps) {
       {/* 방번호별 입금액 카드 - 항상 표시 */}
       {renderRoomAmounts()}
 
-      <div className="data-table-container" style={{ width: '100%', boxSizing: 'border-box' }}>
-        <table className="data-table">
+      <div className="data-table-container" style={{ width: '100%', boxSizing: 'border-box', overflowX: 'auto' }}>
+        <table className="data-table" style={{ 
+          width: '100%', 
+          borderCollapse: 'collapse',
+          border: '1px solid #e5e7eb',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+        }}>
           <thead>
             <tr>
               {Object.entries(columnMapping).map(([key, label]) => (
-                <th key={key} className={columnStyles[key as keyof typeof columnStyles]} style={{ paddingRight: '16px' }}>
+                <th key={key} className={columnStyles[key as keyof typeof columnStyles]} style={{ 
+                  padding: '4px 8px', 
+                  backgroundColor: '#f9fafb',
+                  borderBottom: '1px solid #e5e7eb',
+                  textAlign: 'center',
+                  fontWeight: '600',
+                  fontSize: '0.875rem'
+                }}>
                   {label}
                 </th>
               ))}
-              {/* 여백을 위한 빈 열 추가 */}
-              <th style={{ width: '20px', border: 'none', backgroundColor: 'transparent' }}></th>
             </tr>
           </thead>
           <tbody>
             {filteredData.length === 0 ? (
               <tr>
-                <td colSpan={Object.keys(columnMapping).length + 1} className="empty-state">
+                <td colSpan={Object.keys(columnMapping).length} className="empty-state" style={{ padding: '16px', textAlign: 'center' }}>
                   등록된 거래 내역이 없습니다.
                 </td>
               </tr>
             ) : (
               filteredData.map((transaction) => (
-                <tr key={transaction.id} className="border-b hover:bg-gray-50">
+                <tr key={transaction.id} className="border-b hover:bg-gray-50" style={{ borderBottom: '1px solid #e5e7eb' }}>
                   {Object.keys(columnMapping).map((key) => (
-                    <td key={key} className={columnStyles[key as keyof typeof columnStyles]} style={{ paddingRight: '16px' }}>
+                    <td key={key} className={columnStyles[key as keyof typeof columnStyles]} style={{ padding: '4px 8px' }}>
                       {formatCellValue(transaction, key as keyof typeof columnMapping)}
                     </td>
                   ))}
-                  {/* 여백을 위한 빈 셀 추가 */}
-                  <td style={{ width: '20px', border: 'none' }}></td>
                 </tr>
               ))
             )}

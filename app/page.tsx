@@ -23,21 +23,21 @@ interface HomeData {
 
 // 초기 데이터
 const initialData: HomeData = {
-  urgentTasks: [{ content: '새로운 당면업무를 입력하세요', completed: false }],
-  routineTasks: [{ content: '새로운 일상업무를 입력하세요', completed: false }],
+  urgentTasks: [{ content: '', completed: false }],
+  routineTasks: [{ content: '', completed: false }],
   monthlyTasks: {
-    1: [{ content: '1월 정기업무를 입력하세요', completed: false }],
-    2: [{ content: '2월 정기업무를 입력하세요', completed: false }],
-    3: [{ content: '3월 정기업무를 입력하세요', completed: false }],
-    4: [{ content: '4월 정기업무를 입력하세요', completed: false }],
-    5: [{ content: '5월 정기업무를 입력하세요', completed: false }],
-    6: [{ content: '6월 정기업무를 입력하세요', completed: false }],
-    7: [{ content: '7월 정기업무를 입력하세요', completed: false }],
-    8: [{ content: '8월 정기업무를 입력하세요', completed: false }],
-    9: [{ content: '9월 정기업무를 입력하세요', completed: false }],
-    10: [{ content: '10월 정기업무를 입력하세요', completed: false }],
-    11: [{ content: '11월 정기업무를 입력하세요', completed: false }],
-    12: [{ content: '12월 정기업무를 입력하세요', completed: false }]
+    1: [{ content: '', completed: false }],
+    2: [{ content: '', completed: false }],
+    3: [{ content: '', completed: false }],
+    4: [{ content: '', completed: false }],
+    5: [{ content: '', completed: false }],
+    6: [{ content: '', completed: false }],
+    7: [{ content: '', completed: false }],
+    8: [{ content: '', completed: false }],
+    9: [{ content: '', completed: false }],
+    10: [{ content: '', completed: false }],
+    11: [{ content: '', completed: false }],
+    12: [{ content: '', completed: false }]
   }
 };
 
@@ -47,7 +47,6 @@ function TaskCell({
   tasks,
   onAdd,
   onUpdate,
-  onToggleComplete,
   onDelete,
   onMoveUp,
   onMoveDown,
@@ -57,206 +56,142 @@ function TaskCell({
   tasks: TaskItem[];
   onAdd: () => void;
   onUpdate: (index: number, value: string) => void;
-  onToggleComplete: (index: number) => void;
   onDelete: (index: number) => void;
   onMoveUp: (index: number) => void;
   onMoveDown: (index: number) => void;
   placeholder: string;
 }) {
-  const [expanded, setExpanded] = useState(true);
-  
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   return (
-    <div className="task-cell">
-      <div className="cell-header">
-        <div className="cell-title-area">
-          <button 
-            className="expand-button" 
-            onClick={() => setExpanded(!expanded)}
-            title={expanded ? "셀 접기" : "셀 펼치기"}
-          >
-            {expanded ? '▼' : '▶'}
-          </button>
-          <h2>{title}</h2>
-        </div>
-        
-        <div className="cell-controls">
-          <button 
-            className="cell-run-button" 
-            onClick={onAdd}
-            title="새 항목 추가"
-          >
-            + 추가
-          </button>
-        </div>
+    <div className="summary-card">
+      <div className="flex items-center mb-4">
+        <span className="font-semibold text-base flex-1">{title}</span>
+        <button 
+          className="btn btn-primary btn-sm"
+          onClick={onAdd}
+          title="새 항목 추가"
+        >
+          + 추가
+        </button>
       </div>
-      
-      {expanded && (
-        <div className="cell-content">
-          <div className="tasks-list">
-            {tasks.map((task, index) => (
-              <div key={`task-${index}`} className="task-item">
-                <div className="task-controls">
-                  <button 
-                    className="task-button move-up-button" 
-                    onClick={() => onMoveUp(index)}
-                    disabled={index === 0}
-                    title="위로 이동"
-                  >
-                    ↑
-                  </button>
-                  <button 
-                    className="task-button move-down-button" 
-                    onClick={() => onMoveDown(index)}
-                    disabled={index === tasks.length - 1}
-                    title="아래로 이동"
-                  >
-                    ↓
-                  </button>
-                  <button 
-                    className="task-button delete-button" 
-                    onClick={() => onDelete(index)}
-                    title="항목 삭제"
-                  >
-                    ×
-                  </button>
-                </div>
-                
-                <div className="task-content">
-                  <input
-                    type="checkbox"
-                    checked={task.completed}
-                    onChange={() => onToggleComplete(index)}
-                    className="task-checkbox"
-                  />
-                  <input
-                    type="text"
-                    value={task.content}
-                    onChange={(e) => onUpdate(index, e.target.value)}
-                    placeholder={placeholder}
-                    className={task.completed ? 'completed' : ''}
-                  />
-                </div>
-              </div>
-            ))}
+      <div>
+        {tasks.map((task, index) => (
+          <div key={`task-${index}`} className="task-row-flex">
+            <input
+              type="text"
+              value={task.content || ''}
+              onChange={(e) => onUpdate(index, e.target.value)}
+              placeholder={focusedIndex !== index && (!task.content || task.content === 'null') ? placeholder : ''}
+              className="form-input"
+              onFocus={() => setFocusedIndex(index)}
+              onBlur={() => setFocusedIndex(null)}
+            />
+            <div className="task-controls-horizontal">
+              <button 
+                className="btn btn-outline btn-sm"
+                onClick={() => onMoveUp(index)}
+                disabled={index === 0}
+                title="위로 이동"
+              >▲</button>
+              <button 
+                className="btn btn-outline btn-sm"
+                onClick={() => onMoveDown(index)}
+                disabled={index === tasks.length - 1}
+                title="아래로 이동"
+              >▼</button>
+              <button 
+                className="btn btn-outline btn-sm"
+                onClick={() => onDelete(index)}
+                title="항목 삭제"
+              >삭제</button>
+            </div>
           </div>
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   );
 }
 
 // 월별 작업 셀 컴포넌트
 function MonthlyTaskCell({
+  title,
   activeMonth,
   monthlyTasks,
   onAdd,
   onUpdate,
-  onToggleComplete,
   onDelete,
   onMoveUp,
   onMoveDown,
   onChangeMonth
 }: {
+  title: string;
   activeMonth: number;
   monthlyTasks: MonthlyTasks;
   onAdd: (month: number) => void;
   onUpdate: (month: number, index: number, value: string) => void;
-  onToggleComplete: (month: number, index: number) => void;
   onDelete: (month: number, index: number) => void;
   onMoveUp: (month: number, index: number) => void;
   onMoveDown: (month: number, index: number) => void;
   onChangeMonth: (month: number) => void;
 }) {
-  const [expanded, setExpanded] = useState(true);
-  
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   return (
-    <div className="task-cell">
-      <div className="cell-header">
-        <div className="cell-title-area">
-          <button 
-            className="expand-button" 
-            onClick={() => setExpanded(!expanded)}
-            title={expanded ? "셀 접기" : "셀 펼치기"}
-          >
-            {expanded ? '▼' : '▶'}
-          </button>
-          <h2>월별 정기업무</h2>
-        </div>
-        
-        <div className="cell-controls">
-          <button 
-            className="cell-run-button" 
-            onClick={() => onAdd(activeMonth)}
-            title="새 항목 추가"
-          >
-            + 추가
-          </button>
-        </div>
+    <div className="summary-card">
+      <div className="flex items-center mb-4">
+        <span className="font-semibold text-base flex-1">{title}</span>
+        <button 
+          className="btn btn-primary btn-sm"
+          onClick={() => onAdd(activeMonth)}
+          title="새 항목 추가"
+        >
+          + 추가
+        </button>
       </div>
-      
-      {expanded && (
-        <div className="cell-content">
-          <div className="month-tabs">
-            {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
+      <div className="mb-2 flex flex-wrap gap-1 mt-6">
+        {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
+          <button 
+            key={`month-${month}`}
+            className={`btn btn-outline btn-sm${month === activeMonth ? ' btn-primary text-white' : ''}`}
+            onClick={() => onChangeMonth(month)}
+          >
+            {month}월
+          </button>
+        ))}
+      </div>
+      <div>
+        {(monthlyTasks[activeMonth] || []).map((task, index) => (
+          <div key={`monthly-${activeMonth}-${index}`} className="task-row-flex">
+            <input
+              type="text"
+              value={task.content || ''}
+              onChange={(e) => onUpdate(activeMonth, index, e.target.value)}
+              placeholder={focusedIndex !== index && (!task.content || task.content === 'null') ? `${activeMonth}월 정기업무를 입력하세요` : ''}
+              className="form-input"
+              onFocus={() => setFocusedIndex(index)}
+              onBlur={() => setFocusedIndex(null)}
+            />
+            <div className="task-controls-horizontal">
               <button 
-                key={`month-${month}`}
-                className={`month-tab ${month === activeMonth ? 'active' : ''}`}
-                onClick={() => onChangeMonth(month)}
-              >
-                {month}월
-              </button>
-            ))}
+                className="btn btn-outline btn-sm"
+                onClick={() => onMoveUp(activeMonth, index)}
+                disabled={index === 0}
+                title="위로 이동"
+              >▲</button>
+              <button 
+                className="btn btn-outline btn-sm"
+                onClick={() => onMoveDown(activeMonth, index)}
+                disabled={index === monthlyTasks[activeMonth].length - 1}
+                title="아래로 이동"
+              >▼</button>
+              <button 
+                className="btn btn-outline btn-sm"
+                onClick={() => onDelete(activeMonth, index)}
+                title="항목 삭제"
+              >삭제</button>
+            </div>
           </div>
-          
-          <div className="tasks-list">
-            {(monthlyTasks[activeMonth] || []).map((task, index) => (
-              <div key={`monthly-${activeMonth}-${index}`} className="task-item">
-                <div className="task-controls">
-                  <button 
-                    className="task-button move-up-button" 
-                    onClick={() => onMoveUp(activeMonth, index)}
-                    disabled={index === 0}
-                    title="위로 이동"
-                  >
-                    ↑
-                  </button>
-                  <button 
-                    className="task-button move-down-button" 
-                    onClick={() => onMoveDown(activeMonth, index)}
-                    disabled={index === monthlyTasks[activeMonth].length - 1}
-                    title="아래로 이동"
-                  >
-                    ↓
-                  </button>
-                  <button 
-                    className="task-button delete-button" 
-                    onClick={() => onDelete(activeMonth, index)}
-                    title="항목 삭제"
-                  >
-                    ×
-                  </button>
-                </div>
-                
-                <div className="task-content">
-                  <input
-                    type="checkbox"
-                    checked={task.completed}
-                    onChange={() => onToggleComplete(activeMonth, index)}
-                    className="task-checkbox"
-                  />
-                  <input
-                    type="text"
-                    value={task.content}
-                    onChange={(e) => onUpdate(activeMonth, index, e.target.value)}
-                    placeholder={`${activeMonth}월 정기업무를 입력하세요`}
-                    className={task.completed ? 'completed' : ''}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   );
 }
@@ -285,7 +220,7 @@ export default function Home() {
   const addUrgentTask = () => {
     setHomeData((prev: HomeData) => ({
       ...prev,
-      urgentTasks: [...prev.urgentTasks, { content: '새로운 당면업무를 입력하세요', completed: false }]
+      urgentTasks: [...prev.urgentTasks, { content: '', completed: false }]
     }));
   };
   
@@ -353,7 +288,7 @@ export default function Home() {
   const addRoutineTask = () => {
     setHomeData((prev: HomeData) => ({
       ...prev,
-      routineTasks: [...prev.routineTasks, { content: '새로운 일상업무를 입력하세요', completed: false }]
+      routineTasks: [...prev.routineTasks, { content: '', completed: false }]
     }));
   };
   
@@ -421,7 +356,7 @@ export default function Home() {
   const addMonthlyTask = (month: number) => {
     setHomeData((prev: HomeData) => {
       const newMonthlyTasks = { ...prev.monthlyTasks };
-      newMonthlyTasks[month] = [...(newMonthlyTasks[month] || []), { content: `${month}월 정기업무를 입력하세요`, completed: false }];
+      newMonthlyTasks[month] = [...(newMonthlyTasks[month] || []), { content: '', completed: false }];
       return { ...prev, monthlyTasks: newMonthlyTasks };
     });
   };
@@ -506,276 +441,47 @@ export default function Home() {
   }
   
   return (
-    <div className="notebook-container">
-      <h1 className="notebook-title">업무 관리 노트북</h1>
-      
-      <div className="notebook-cells">
-        {/* 당면업무 셀 */}
-        <TaskCell
-          title="당면업무"
-          tasks={homeData.urgentTasks}
-          onAdd={addUrgentTask}
-          onUpdate={updateUrgentTask}
-          onToggleComplete={toggleUrgentTaskComplete}
-          onDelete={deleteUrgentTask}
-          onMoveUp={moveUrgentTaskUp}
-          onMoveDown={moveUrgentTaskDown}
-          placeholder="당면업무를 입력하세요"
-        />
-        
-        {/* 일상업무 셀 */}
-        <TaskCell
-          title="일상업무"
-          tasks={homeData.routineTasks}
-          onAdd={addRoutineTask}
-          onUpdate={updateRoutineTask}
-          onToggleComplete={toggleRoutineTaskComplete}
-          onDelete={deleteRoutineTask}
-          onMoveUp={moveRoutineTaskUp}
-          onMoveDown={moveRoutineTaskDown}
-          placeholder="일상업무를 입력하세요"
-        />
-        
-        {/* 월별 정기업무 셀 */}
-        <MonthlyTaskCell
-          activeMonth={activeMonth}
-          monthlyTasks={homeData.monthlyTasks}
-          onAdd={addMonthlyTask}
-          onUpdate={updateMonthlyTask}
-          onToggleComplete={toggleMonthlyTaskComplete}
-          onDelete={deleteMonthlyTask}
-          onMoveUp={moveMonthlyTaskUp}
-          onMoveDown={moveMonthlyTaskDown}
-          onChangeMonth={setActiveMonth}
-        />
+    <div className="notebook-outer">
+      <div className="notebook-container">
+        <div className="notebook-cells">
+          {/* 당면업무 셀 */}
+          <TaskCell
+            title="당면업무"
+            tasks={homeData.urgentTasks}
+            onAdd={addUrgentTask}
+            onUpdate={updateUrgentTask}
+            onDelete={deleteUrgentTask}
+            onMoveUp={moveUrgentTaskUp}
+            onMoveDown={moveUrgentTaskDown}
+            placeholder="당면업무를 입력하세요"
+          />
+          
+          {/* 일상업무 셀 */}
+          <TaskCell
+            title="일상업무"
+            tasks={homeData.routineTasks}
+            onAdd={addRoutineTask}
+            onUpdate={updateRoutineTask}
+            onDelete={deleteRoutineTask}
+            onMoveUp={moveRoutineTaskUp}
+            onMoveDown={moveRoutineTaskDown}
+            placeholder="일상업무를 입력하세요"
+          />
+          
+          {/* 월별 정기업무 셀 */}
+          <MonthlyTaskCell
+            title="월별 정기업무"
+            activeMonth={activeMonth}
+            monthlyTasks={homeData.monthlyTasks}
+            onAdd={addMonthlyTask}
+            onUpdate={updateMonthlyTask}
+            onDelete={deleteMonthlyTask}
+            onMoveUp={moveMonthlyTaskUp}
+            onMoveDown={moveMonthlyTaskDown}
+            onChangeMonth={setActiveMonth}
+          />
+        </div>
       </div>
-      
-      <style jsx>{`
-        .notebook-container {
-          max-width: 1000px;
-          margin: 0 auto;
-          padding: 2rem;
-          background-color: #f8f9fa;
-          min-height: 100vh;
-        }
-        
-        .notebook-title {
-          font-size: 2rem;
-          text-align: center;
-          color: #303846;
-          margin-bottom: 2rem;
-          font-weight: 600;
-          border-bottom: 1px solid #e1e4e8;
-          padding-bottom: 1rem;
-        }
-        
-        .notebook-cells {
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
-        }
-        
-        .task-cell {
-          background-color: white;
-          border: 1px solid #e1e4e8;
-          border-left: 4px solid #2188ff;
-          border-radius: 4px;
-          overflow: hidden;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-        }
-        
-        .cell-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 0.75rem 1rem;
-          background-color: #f6f8fa;
-          border-bottom: 1px solid #e1e4e8;
-        }
-        
-        .cell-title-area {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-        }
-        
-        .cell-title-area h2 {
-          margin: 0;
-          font-size: 1.2rem;
-          font-weight: 600;
-          color: #24292e;
-        }
-        
-        .expand-button {
-          background: none;
-          border: none;
-          color: #586069;
-          cursor: pointer;
-          font-size: 1rem;
-          padding: 0.25rem;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        
-        .expand-button:hover {
-          color: #0366d6;
-        }
-        
-        .cell-controls {
-          display: flex;
-          gap: 0.5rem;
-        }
-        
-        .cell-run-button {
-          background-color: #28a745;
-          color: white;
-          border: none;
-          border-radius: 4px;
-          padding: 0.5rem 1rem;
-          font-size: 0.9rem;
-          font-weight: 500;
-          cursor: pointer;
-          transition: background-color 0.2s;
-        }
-        
-        .cell-run-button:hover {
-          background-color: #22863a;
-        }
-        
-        .cell-content {
-          padding: 1rem;
-        }
-        
-        .tasks-list {
-          display: flex;
-          flex-direction: column;
-          gap: 0.75rem;
-        }
-        
-        .task-item {
-          display: flex;
-          align-items: flex-start;
-          gap: 0.5rem;
-          padding: 0.5rem;
-          border: 1px solid #f0f0f0;
-          border-radius: 4px;
-          background-color: #fafbfc;
-        }
-        
-        .task-controls {
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-        }
-        
-        .task-button {
-          background: none;
-          border: 1px solid #e1e4e8;
-          border-radius: 3px;
-          padding: 0.25rem 0.5rem;
-          font-size: 0.8rem;
-          cursor: pointer;
-          color: #586069;
-        }
-        
-        .task-button:hover:not(:disabled) {
-          background-color: #f6f8fa;
-          color: #0366d6;
-        }
-        
-        .task-button:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-        
-        .delete-button:hover:not(:disabled) {
-          color: #cb2431;
-          border-color: #cb2431;
-          background-color: #ffeef0;
-        }
-        
-        .task-content {
-          display: flex;
-          align-items: center;
-          flex: 1;
-          gap: 0.75rem;
-        }
-        
-        .task-checkbox {
-          width: 18px;
-          height: 18px;
-          cursor: pointer;
-        }
-        
-        .task-content input[type="text"] {
-          flex: 1;
-          padding: 0.75rem;
-          border: 1px solid #e1e4e8;
-          border-radius: 3px;
-          font-size: 1rem;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-        }
-        
-        .task-content input[type="text"]:focus {
-          border-color: #0366d6;
-          box-shadow: 0 0 0 3px rgba(3, 102, 214, 0.1);
-          outline: none;
-        }
-        
-        .task-content input[type="text"].completed {
-          text-decoration: line-through;
-          color: #6a737d;
-        }
-        
-        .month-tabs {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.25rem;
-          margin-bottom: 1rem;
-        }
-        
-        .month-tab {
-          padding: 0.5rem 1rem;
-          border: 1px solid #e1e4e8;
-          border-radius: 3px;
-          background-color: #f6f8fa;
-          cursor: pointer;
-          font-size: 0.9rem;
-        }
-        
-        .month-tab.active {
-          background-color: #0366d6;
-          color: white;
-          border-color: #0366d6;
-        }
-        
-        .month-tab:hover:not(.active) {
-          background-color: #eff3f6;
-        }
-        
-        .loading {
-          padding: 2rem;
-          text-align: center;
-          font-size: 1.2rem;
-          color: #586069;
-        }
-        
-        @media (max-width: 768px) {
-          .notebook-container {
-            padding: 1rem;
-          }
-          
-          .cell-title-area h2 {
-            font-size: 1.1rem;
-          }
-          
-          .month-tabs {
-            overflow-x: auto;
-            padding-bottom: 0.5rem;
-          }
-        }
-      `}</style>
     </div>
   );
 }

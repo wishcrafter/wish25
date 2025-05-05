@@ -6,80 +6,10 @@
       "static/chunks/_app-pages-browser_app_dashboard_components_DashboardContent_tsx.js"
     ]
   },
-  "app\\management\\expenses\\page.tsx -> ./components/ExpensesContent": {
-    "id": "app\\management\\expenses\\page.tsx -> ./components/ExpensesContent",
-    "files": [
-      "static/chunks/_app-pages-browser_app_management_expenses_components_ExpensesContent_tsx.js"
-    ]
-  },
-  "app\\management\\others\\page.tsx -> ./components/OthersContent": {
-    "id": "app\\management\\others\\page.tsx -> ./components/OthersContent",
-    "files": [
-      "static/chunks/_app-pages-browser_app_management_others_components_OthersContent_tsx.js"
-    ]
-  },
-  "app\\management\\purchases\\page.tsx -> ./components/PurchasesContent": {
-    "id": "app\\management\\purchases\\page.tsx -> ./components/PurchasesContent",
-    "files": [
-      "static/chunks/_app-pages-browser_app_management_purchases_components_PurchasesContent_tsx.js"
-    ]
-  },
-  "app\\management\\sales\\page.tsx -> ./components/SalesContent": {
-    "id": "app\\management\\sales\\page.tsx -> ./components/SalesContent",
-    "files": [
-      "static/chunks/_app-pages-browser_app_management_sales_components_SalesContent_tsx.js"
-    ]
-  },
-  "app\\management\\wstudio\\page.tsx -> ./components/WStudioContent": {
-    "id": "app\\management\\wstudio\\page.tsx -> ./components/WStudioContent",
-    "files": [
-      "static/chunks/_app-pages-browser_app_management_wstudio_components_WStudioContent_tsx.js"
-    ]
-  },
-  "app\\master\\vendors\\page.tsx -> ../components/VendorsContent": {
-    "id": "app\\master\\vendors\\page.tsx -> ../components/VendorsContent",
-    "files": [
-      "static/chunks/_app-pages-browser_app_master_components_VendorsContent_tsx.js"
-    ]
-  },
-  "node_modules\\@supabase\\auth-js\\dist\\module\\lib\\helpers.js -> @supabase/node-fetch": {
-    "id": "node_modules\\@supabase\\auth-js\\dist\\module\\lib\\helpers.js -> @supabase/node-fetch",
-    "files": []
-  },
-  "node_modules\\@supabase\\functions-js\\dist\\module\\helper.js -> @supabase/node-fetch": {
-    "id": "node_modules\\@supabase\\functions-js\\dist\\module\\helper.js -> @supabase/node-fetch",
-    "files": []
-  },
-  "node_modules\\@supabase\\realtime-js\\dist\\module\\RealtimeClient.js -> @supabase/node-fetch": {
-    "id": "node_modules\\@supabase\\realtime-js\\dist\\module\\RealtimeClient.js -> @supabase/node-fetch",
-    "files": []
-  },
-  "node_modules\\@supabase\\realtime-js\\dist\\module\\RealtimeClient.js -> ws": {
-    "id": "node_modules\\@supabase\\realtime-js\\dist\\module\\RealtimeClient.js -> ws",
-    "files": [
-      "static/chunks/_app-pages-browser_node_modules_ws_browser_js.js"
-    ]
-  },
-  "node_modules\\@supabase\\storage-js\\dist\\module\\lib\\helpers.js -> @supabase/node-fetch": {
-    "id": "node_modules\\@supabase\\storage-js\\dist\\module\\lib\\helpers.js -> @supabase/node-fetch",
-    "files": []
-  },
   "node_modules\\next\\dist\\client\\components\\react-dev-overlay\\utils\\use-websocket.js -> @vercel/turbopack-ecmascript-runtime/browser/dev/hmr-client/hmr-client.ts": {
     "id": "node_modules\\next\\dist\\client\\components\\react-dev-overlay\\utils\\use-websocket.js -> @vercel/turbopack-ecmascript-runtime/browser/dev/hmr-client/hmr-client.ts",
     "files": [
       "static/chunks/_app-pages-browser_node_modules_next_dist_client_dev_noop-turbopack-hmr_js.js"
-    ]
-  },
-  "node_modules\\next\\dist\\client\\index.js -> ../pages/_app": {
-    "id": "node_modules\\next\\dist\\client\\index.js -> ../pages/_app",
-    "files": [
-      "static/chunks/_pages-dir-browser_node_modules_next_dist_pages__app_js.js"
-    ]
-  },
-  "node_modules\\next\\dist\\client\\index.js -> ../pages/_error": {
-    "id": "node_modules\\next\\dist\\client\\index.js -> ../pages/_error",
-    "files": [
-      "static/chunks/_pages-dir-browser_node_modules_next_dist_pages__error_js.js"
     ]
   }
 }
