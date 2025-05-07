@@ -469,6 +469,8 @@ export default function Home() {
     if (index === 0) return;
     
     try {
+      console.log('위로 이동 시작:', { group, index, month });
+      
       // Supabase 쿼리 빌더 초기화
       let query = supabase
         .from('todo_list')
@@ -491,10 +493,17 @@ export default function Home() {
         return;
       }
 
+      console.log('조회된 데이터:', existingData);
+
       const currentId = existingData[index].id;
       const prevId = existingData[index - 1].id;
       const currentTodo = existingData[index].todo;
       const prevTodo = existingData[index - 1].todo;
+
+      console.log('교환할 항목:', { 
+        current: { id: currentId, todo: currentTodo },
+        prev: { id: prevId, todo: prevTodo }
+      });
 
       const { error: updateError } = await supabase
         .from('todo_list')
@@ -503,8 +512,31 @@ export default function Home() {
           { id: prevId, todo: currentTodo }
         ]);
 
-      if (updateError) console.error('위치 변경 오류:', updateError);
-      else await loadTodos();
+      if (updateError) {
+        console.error('위치 변경 오류:', updateError);
+      } else {
+        console.log('위치 변경 성공');
+        
+        // 현재 상태 업데이트 (UI 반영)
+        if (group === '당면업무') {
+          // 배열에서 위치 교환
+          const newTasks = [...urgentTasks];
+          [newTasks[index], newTasks[index - 1]] = [newTasks[index - 1], newTasks[index]];
+          setUrgentTasks(newTasks);
+        } else if (group === '일상업무') {
+          const newTasks = [...routineTasks];
+          [newTasks[index], newTasks[index - 1]] = [newTasks[index - 1], newTasks[index]];
+          setRoutineTasks(newTasks);
+        } else if (group === '정기업무' && month) {
+          const newMonthly = { ...monthlyTasks };
+          newMonthly[month] = [...newMonthly[month]];
+          [newMonthly[month][index], newMonthly[month][index - 1]] = 
+            [newMonthly[month][index - 1], newMonthly[month][index]];
+          setMonthlyTasks(newMonthly);
+        }
+        
+        await loadTodos(); // 데이터 다시 로드
+      }
     } catch (error) {
       console.error('예상치 못한 오류:', error);
     }
@@ -513,6 +545,8 @@ export default function Home() {
   // 업무 순서 변경 핸들러 (아래로)
   const handleMoveDown = async (group: string, index: number, month?: number) => {
     try {
+      console.log('아래로 이동 시작:', { group, index, month });
+      
       // Supabase 쿼리 빌더 초기화
       let query = supabase
         .from('todo_list')
@@ -535,10 +569,17 @@ export default function Home() {
         return;
       }
 
+      console.log('조회된 데이터:', existingData);
+
       const currentId = existingData[index].id;
       const nextId = existingData[index + 1].id;
       const currentTodo = existingData[index].todo;
       const nextTodo = existingData[index + 1].todo;
+
+      console.log('교환할 항목:', { 
+        current: { id: currentId, todo: currentTodo },
+        next: { id: nextId, todo: nextTodo }
+      });
 
       const { error: updateError } = await supabase
         .from('todo_list')
@@ -547,8 +588,31 @@ export default function Home() {
           { id: nextId, todo: currentTodo }
         ]);
 
-      if (updateError) console.error('위치 변경 오류:', updateError);
-      else await loadTodos();
+      if (updateError) {
+        console.error('위치 변경 오류:', updateError);
+      } else {
+        console.log('위치 변경 성공');
+        
+        // 현재 상태 업데이트 (UI 반영)
+        if (group === '당면업무') {
+          // 배열에서 위치 교환
+          const newTasks = [...urgentTasks];
+          [newTasks[index], newTasks[index + 1]] = [newTasks[index + 1], newTasks[index]];
+          setUrgentTasks(newTasks);
+        } else if (group === '일상업무') {
+          const newTasks = [...routineTasks];
+          [newTasks[index], newTasks[index + 1]] = [newTasks[index + 1], newTasks[index]];
+          setRoutineTasks(newTasks);
+        } else if (group === '정기업무' && month) {
+          const newMonthly = { ...monthlyTasks };
+          newMonthly[month] = [...newMonthly[month]];
+          [newMonthly[month][index], newMonthly[month][index + 1]] = 
+            [newMonthly[month][index + 1], newMonthly[month][index]];
+          setMonthlyTasks(newMonthly);
+        }
+        
+        await loadTodos(); // 데이터 다시 로드
+      }
     } catch (error) {
       console.error('예상치 못한 오류:', error);
     }
