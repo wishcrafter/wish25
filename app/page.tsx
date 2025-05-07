@@ -319,12 +319,50 @@ export default function Home() {
   const [selectedRoutineIndex, setSelectedRoutineIndex] = useState<number | null>(null);
   const [selectedMonthlyIndex, setSelectedMonthlyIndex] = useState<number | null>(null);
   
+  // 선택된 항목의 정보를 저장하는 상태 변수
+  const [selectedUrgentId, setSelectedUrgentId] = useState<number | null>(null);
+  const [selectedRoutineId, setSelectedRoutineId] = useState<number | null>(null);
+  const [selectedMonthlyId, setSelectedMonthlyId] = useState<number | null>(null);
+  
+  // 선택된 항목의 인덱스가 변경될 때 ID도 함께 업데이트
+  useEffect(() => {
+    if (selectedUrgentIndex !== null && urgentTasks[selectedUrgentIndex]?.id) {
+      setSelectedUrgentId(urgentTasks[selectedUrgentIndex].id || null);
+    } else {
+      setSelectedUrgentId(null);
+    }
+  }, [selectedUrgentIndex, urgentTasks]);
+
+  useEffect(() => {
+    if (selectedRoutineIndex !== null && routineTasks[selectedRoutineIndex]?.id) {
+      setSelectedRoutineId(routineTasks[selectedRoutineIndex].id || null);
+    } else {
+      setSelectedRoutineId(null);
+    }
+  }, [selectedRoutineIndex, routineTasks]);
+
+  useEffect(() => {
+    if (selectedMonthlyIndex !== null && 
+        monthlyTasks[activeMonth] && 
+        monthlyTasks[activeMonth][selectedMonthlyIndex]?.id) {
+      setSelectedMonthlyId(monthlyTasks[activeMonth][selectedMonthlyIndex].id || null);
+    } else {
+      setSelectedMonthlyId(null);
+    }
+  }, [selectedMonthlyIndex, monthlyTasks, activeMonth]);
+  
   // 데이터 로드 함수
   const loadTodos = async () => {
     try {
+      // 선택된 ID 저장 (기존 선택 항목을 다시 찾기 위함)
+      const savedUrgentId = selectedUrgentId;
+      const savedRoutineId = selectedRoutineId;
+      const savedMonthlyId = selectedMonthlyId;
+      
       const { data, error } = await supabase
         .from('todo_list')
-        .select('id, group, todo, month');
+        .select('id, group, todo, month')
+        .order('id');
       
       if (error) {
         console.error('데이터 로드 오류:', error);
@@ -340,6 +378,10 @@ export default function Home() {
         for (let m = 1; m <= 12; m++) emptyMonthly[m] = [];
         setMonthlyTasks(emptyMonthly);
         
+        // 선택 초기화
+        setSelectedUrgentIndex(null);
+        setSelectedRoutineIndex(null);
+        setSelectedMonthlyIndex(null);
         return;
       }
       
@@ -372,6 +414,37 @@ export default function Home() {
         routineCount: routine.length, 
         monthlyCount: Object.values(monthly).flat().length 
       });
+      
+      // ID를 기준으로 선택된 항목의 새 인덱스 찾기
+      if (savedUrgentId !== null) {
+        const newIndex = urgent.findIndex(item => item.id === savedUrgentId);
+        if (newIndex !== -1) {
+          setSelectedUrgentIndex(newIndex);
+          console.log('당면업무 선택 항목 복원:', { savedId: savedUrgentId, newIndex });
+        } else {
+          setSelectedUrgentIndex(null);
+        }
+      }
+      
+      if (savedRoutineId !== null) {
+        const newIndex = routine.findIndex(item => item.id === savedRoutineId);
+        if (newIndex !== -1) {
+          setSelectedRoutineIndex(newIndex);
+          console.log('일상업무 선택 항목 복원:', { savedId: savedRoutineId, newIndex });
+        } else {
+          setSelectedRoutineIndex(null);
+        }
+      }
+      
+      if (savedMonthlyId !== null && monthly[activeMonth]) {
+        const newIndex = monthly[activeMonth].findIndex(item => item.id === savedMonthlyId);
+        if (newIndex !== -1) {
+          setSelectedMonthlyIndex(newIndex);
+          console.log('정기업무 선택 항목 복원:', { savedId: savedMonthlyId, newIndex });
+        } else {
+          setSelectedMonthlyIndex(null);
+        }
+      }
     } catch (error) {
       console.error('예상치 못한 오류:', error);
     }
@@ -501,6 +574,19 @@ export default function Home() {
     try {
       console.log('위로 이동 시작:', { group, index, month });
       
+      // 현재 선택된 항목의 ID 저장
+      let selectedItemId: number | null = null;
+      
+      if (group === '당면업무' && urgentTasks[index]) {
+        selectedItemId = urgentTasks[index].id || null;
+      } else if (group === '일상업무' && routineTasks[index]) {
+        selectedItemId = routineTasks[index].id || null;
+      } else if (group === '정기업무' && month && monthlyTasks[month] && monthlyTasks[month][index]) {
+        selectedItemId = monthlyTasks[month][index].id || null;
+      }
+      
+      console.log('선택된 항목 ID:', selectedItemId);
+      
       // Supabase 쿼리 빌더 초기화
       let query = supabase
         .from('todo_list')
@@ -535,6 +621,15 @@ export default function Home() {
         prev: { id: prevId, todo: prevTodo }
       });
 
+      // ID에 해당하는 항목을 저장
+      if (group === '당면업무') {
+        setSelectedUrgentId(currentId);
+      } else if (group === '일상업무') {
+        setSelectedRoutineId(currentId);
+      } else if (group === '정기업무') {
+        setSelectedMonthlyId(currentId);
+      }
+
       const { error: updateError } = await supabase
         .from('todo_list')
         .upsert([
@@ -545,26 +640,7 @@ export default function Home() {
       if (updateError) {
         console.error('위치 변경 오류:', updateError);
       } else {
-        console.log('위치 변경 성공');
-        
-        // 현재 상태 업데이트 (UI 반영)
-        if (group === '당면업무') {
-          // 배열에서 위치 교환
-          const newTasks = [...urgentTasks];
-          [newTasks[index], newTasks[index - 1]] = [newTasks[index - 1], newTasks[index]];
-          setUrgentTasks(newTasks);
-        } else if (group === '일상업무') {
-          const newTasks = [...routineTasks];
-          [newTasks[index], newTasks[index - 1]] = [newTasks[index - 1], newTasks[index]];
-          setRoutineTasks(newTasks);
-        } else if (group === '정기업무' && month) {
-          const newMonthly = { ...monthlyTasks };
-          newMonthly[month] = [...newMonthly[month]];
-          [newMonthly[month][index], newMonthly[month][index - 1]] = 
-            [newMonthly[month][index - 1], newMonthly[month][index]];
-          setMonthlyTasks(newMonthly);
-        }
-        
+        console.log('위치 변경 성공, 데이터 다시 로드');
         await loadTodos(); // 데이터 다시 로드
       }
     } catch (error) {
@@ -576,6 +652,19 @@ export default function Home() {
   const handleMoveDown = async (group: string, index: number, month?: number) => {
     try {
       console.log('아래로 이동 시작:', { group, index, month });
+      
+      // 현재 선택된 항목의 ID 저장
+      let selectedItemId: number | null = null;
+      
+      if (group === '당면업무' && urgentTasks[index]) {
+        selectedItemId = urgentTasks[index].id || null;
+      } else if (group === '일상업무' && routineTasks[index]) {
+        selectedItemId = routineTasks[index].id || null;
+      } else if (group === '정기업무' && month && monthlyTasks[month] && monthlyTasks[month][index]) {
+        selectedItemId = monthlyTasks[month][index].id || null;
+      }
+      
+      console.log('선택된 항목 ID:', selectedItemId);
       
       // Supabase 쿼리 빌더 초기화
       let query = supabase
@@ -611,6 +700,15 @@ export default function Home() {
         next: { id: nextId, todo: nextTodo }
       });
 
+      // ID에 해당하는 항목을 저장
+      if (group === '당면업무') {
+        setSelectedUrgentId(currentId);
+      } else if (group === '일상업무') {
+        setSelectedRoutineId(currentId);
+      } else if (group === '정기업무') {
+        setSelectedMonthlyId(currentId);
+      }
+
       const { error: updateError } = await supabase
         .from('todo_list')
         .upsert([
@@ -621,26 +719,7 @@ export default function Home() {
       if (updateError) {
         console.error('위치 변경 오류:', updateError);
       } else {
-        console.log('위치 변경 성공');
-        
-        // 현재 상태 업데이트 (UI 반영)
-        if (group === '당면업무') {
-          // 배열에서 위치 교환
-          const newTasks = [...urgentTasks];
-          [newTasks[index], newTasks[index + 1]] = [newTasks[index + 1], newTasks[index]];
-          setUrgentTasks(newTasks);
-        } else if (group === '일상업무') {
-          const newTasks = [...routineTasks];
-          [newTasks[index], newTasks[index + 1]] = [newTasks[index + 1], newTasks[index]];
-          setRoutineTasks(newTasks);
-        } else if (group === '정기업무' && month) {
-          const newMonthly = { ...monthlyTasks };
-          newMonthly[month] = [...newMonthly[month]];
-          [newMonthly[month][index], newMonthly[month][index + 1]] = 
-            [newMonthly[month][index + 1], newMonthly[month][index]];
-          setMonthlyTasks(newMonthly);
-        }
-        
+        console.log('위치 변경 성공, 데이터 다시 로드');
         await loadTodos(); // 데이터 다시 로드
       }
     } catch (error) {
