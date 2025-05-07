@@ -684,13 +684,17 @@ export default function Home() {
       
       // 현재 선택된 항목의 ID 저장
       let selectedItemId: number | null = null;
+      let todo: string = '';
       
       if (group === '당면업무' && urgentTasks[index]) {
         selectedItemId = urgentTasks[index].id || null;
+        todo = urgentTasks[index].content;
       } else if (group === '일상업무' && routineTasks[index]) {
         selectedItemId = routineTasks[index].id || null;
+        todo = routineTasks[index].content;
       } else if (group === '정기업무' && month && monthlyTasks[month] && monthlyTasks[month][index]) {
         selectedItemId = monthlyTasks[month][index].id || null;
+        todo = monthlyTasks[month][index].content;
       }
       
       if (!selectedItemId) {
@@ -736,17 +740,19 @@ export default function Home() {
         prev: prevItem
       });
       
-      // 선택된 항목의 ID를 유지
+      // 인덱스를 하나 감소 (위로 이동)
+      const newIndex = index - 1;
+      
+      // 선택된 항목의 ID를 유지하고 인덱스 업데이트
       if (group === '당면업무') {
         setSelectedUrgentId(selectedItemId);
-        // 인덱스를 하나 감소 (위로 이동)
-        setSelectedUrgentIndex(index - 1);
+        setSelectedUrgentIndex(newIndex);
       } else if (group === '일상업무') {
         setSelectedRoutineId(selectedItemId);
-        setSelectedRoutineIndex(index - 1);
+        setSelectedRoutineIndex(newIndex);
       } else if (group === '정기업무') {
         setSelectedMonthlyId(selectedItemId);
-        setSelectedMonthlyIndex(index - 1);
+        setSelectedMonthlyIndex(newIndex);
       }
       
       // 내용 교환 방식으로 위치 변경 (ID 필드를 직접 수정하지 않음)
@@ -762,8 +768,25 @@ export default function Home() {
         return;
       }
       
-      // 데이터 다시 로드하여 변경사항 적용
-      await loadTodos();
+      // 로컬 배열 직접 업데이트하여 페이지 새로고침 없이 즉시 반영
+      if (group === '당면업무') {
+        const updatedTasks = [...urgentTasks];
+        // 항목 위치 교환
+        [updatedTasks[index], updatedTasks[newIndex]] = [updatedTasks[newIndex], updatedTasks[index]];
+        setUrgentTasks(updatedTasks);
+      } else if (group === '일상업무') {
+        const updatedTasks = [...routineTasks];
+        // 항목 위치 교환
+        [updatedTasks[index], updatedTasks[newIndex]] = [updatedTasks[newIndex], updatedTasks[index]];
+        setRoutineTasks(updatedTasks);
+      } else if (group === '정기업무' && month) {
+        const updatedMonthlyTasks = {...monthlyTasks};
+        const updatedTasks = [...updatedMonthlyTasks[month]];
+        // 항목 위치 교환
+        [updatedTasks[index], updatedTasks[newIndex]] = [updatedTasks[newIndex], updatedTasks[index]];
+        updatedMonthlyTasks[month] = updatedTasks;
+        setMonthlyTasks(updatedMonthlyTasks);
+      }
     } catch (error) {
       console.error('예상치 못한 오류:', error);
     }
@@ -776,13 +799,17 @@ export default function Home() {
       
       // 현재 선택된 항목의 ID 저장
       let selectedItemId: number | null = null;
+      let todo: string = '';
       
       if (group === '당면업무' && urgentTasks[index]) {
         selectedItemId = urgentTasks[index].id || null;
+        todo = urgentTasks[index].content;
       } else if (group === '일상업무' && routineTasks[index]) {
         selectedItemId = routineTasks[index].id || null;
+        todo = routineTasks[index].content;
       } else if (group === '정기업무' && month && monthlyTasks[month] && monthlyTasks[month][index]) {
         selectedItemId = monthlyTasks[month][index].id || null;
+        todo = monthlyTasks[month][index].content;
       }
       
       if (!selectedItemId) {
@@ -828,17 +855,19 @@ export default function Home() {
         next: nextItem
       });
       
-      // 선택된 항목의 ID를 유지
+      // 인덱스를 하나 증가 (아래로 이동)
+      const newIndex = index + 1;
+      
+      // 선택된 항목의 ID를 유지하고 인덱스 업데이트
       if (group === '당면업무') {
         setSelectedUrgentId(selectedItemId);
-        // 인덱스를 하나 증가 (아래로 이동)
-        setSelectedUrgentIndex(index + 1);
+        setSelectedUrgentIndex(newIndex);
       } else if (group === '일상업무') {
         setSelectedRoutineId(selectedItemId);
-        setSelectedRoutineIndex(index + 1);
+        setSelectedRoutineIndex(newIndex);
       } else if (group === '정기업무') {
         setSelectedMonthlyId(selectedItemId);
-        setSelectedMonthlyIndex(index + 1);
+        setSelectedMonthlyIndex(newIndex);
       }
       
       // 내용 교환 방식으로 위치 변경 (ID 필드를 직접 수정하지 않음)
@@ -854,8 +883,25 @@ export default function Home() {
         return;
       }
       
-      // 데이터 다시 로드하여 변경사항 적용
-      await loadTodos();
+      // 로컬 배열 직접 업데이트하여 페이지 새로고침 없이 즉시 반영
+      if (group === '당면업무') {
+        const updatedTasks = [...urgentTasks];
+        // 항목 위치 교환
+        [updatedTasks[index], updatedTasks[newIndex]] = [updatedTasks[newIndex], updatedTasks[index]];
+        setUrgentTasks(updatedTasks);
+      } else if (group === '일상업무') {
+        const updatedTasks = [...routineTasks];
+        // 항목 위치 교환
+        [updatedTasks[index], updatedTasks[newIndex]] = [updatedTasks[newIndex], updatedTasks[index]];
+        setRoutineTasks(updatedTasks);
+      } else if (group === '정기업무' && month) {
+        const updatedMonthlyTasks = {...monthlyTasks};
+        const updatedTasks = [...updatedMonthlyTasks[month]];
+        // 항목 위치 교환
+        [updatedTasks[index], updatedTasks[newIndex]] = [updatedTasks[newIndex], updatedTasks[index]];
+        updatedMonthlyTasks[month] = updatedTasks;
+        setMonthlyTasks(updatedMonthlyTasks);
+      }
     } catch (error) {
       console.error('예상치 못한 오류:', error);
     }
