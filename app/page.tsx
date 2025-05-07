@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useLocalStorage } from '../hooks/useLocalStorage';
+import { supabase } from '../lib/supabaseClient';
 
 // 업무 아이템 인터페이스
 interface TaskItem {
+  id?: number;
   content: string;
   completed: boolean;
 }
@@ -198,286 +199,313 @@ function MonthlyTaskCell({
 
 // 클라이언트 컴포넌트
 export default function Home() {
-  // 클라이언트 사이드 렌더링임을 확인
   const [isClient, setIsClient] = useState(false);
-  
-  // 선택된 업무 인덱스 관리
-  const [selectedUrgentTask, setSelectedUrgentTask] = useState<number | null>(null);
-  const [selectedRoutineTask, setSelectedRoutineTask] = useState<number | null>(null);
-  const [selectedMonthlyTask, setSelectedMonthlyTask] = useState<number | null>(null);
-  
+  const [urgentTasks, setUrgentTasks] = useState<TaskItem[]>([]);
+  const [routineTasks, setRoutineTasks] = useState<TaskItem[]>([]);
+  const [monthlyTasks, setMonthlyTasks] = useState<MonthlyTasks>(() => {
+    const init: MonthlyTasks = {};
+    for (let m = 1; m <= 12; m++) init[m] = [];
+    return init;
+  });
+  const [activeMonth, setActiveMonth] = useState<number>(new Date().getMonth() + 1);
+
+  // 데이터 로드 함수
+  const loadTodos = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('todo_list')
+        .select('id, group, todo, month');
+      
+      if (error) {
+        console.error('데이터 로드 오류:', error);
+        return;
+      }
+      
+      // 데이터가 없으면 빈 목록 설정
+      if (!data || data.length === 0) {
+        setUrgentTasks([]);
+        setRoutineTasks([]);
+        
+        const emptyMonthly: MonthlyTasks = {};
+        for (let m = 1; m <= 12; m++) emptyMonthly[m] = [];
+        setMonthlyTasks(emptyMonthly);
+        
+        return;
+      }
+      
+      const rows = data as { id: number; group: string; todo: string; month: number }[];
+      
+      // 각 그룹별 데이터 필터링
+      const urgent = rows
+        .filter(r => r.group === '당면업무')
+        .map(r => ({ id: r.id, content: r.todo, completed: false }));
+      
+      const routine = rows
+        .filter(r => r.group === '일상업무')
+        .map(r => ({ id: r.id, content: r.todo, completed: false }));
+      
+      // 월별 정기업무 데이터 구성
+      const monthly: MonthlyTasks = {};
+      for (let m = 1; m <= 12; m++) {
+        monthly[m] = rows
+          .filter(r => r.group === '정기업무' && r.month === m)
+          .map(r => ({ id: r.id, content: r.todo, completed: false }));
+      }
+      
+      // 상태 업데이트
+      setUrgentTasks(urgent.length > 0 ? urgent : []);
+      setRoutineTasks(routine.length > 0 ? routine : []);
+      setMonthlyTasks(monthly);
+      
+      console.log('데이터 로드 완료', { 
+        urgentCount: urgent.length, 
+        routineCount: routine.length, 
+        monthlyCount: Object.values(monthly).flat().length 
+      });
+    } catch (error) {
+      console.error('예상치 못한 오류:', error);
+    }
+  };
+
   useEffect(() => {
     setIsClient(true);
+    loadTodos();
   }, []);
 
-  // localStorage에서 데이터 불러오기
-  const [homeData, setHomeData] = useLocalStorage<HomeData>('home-tasks', initialData);
-  
-  // 활성화된 월 상태
-  const [activeMonth, setActiveMonth] = useState<number>(new Date().getMonth() + 1);
-  
-  // 당면업무 처리 함수들
-  const addUrgentTask = () => {
-    setHomeData((prev: HomeData) => ({
-      ...prev,
-      urgentTasks: [...prev.urgentTasks, { content: '', completed: false }]
-    }));
-  };
-  
-  const updateUrgentTask = (index: number, value: string) => {
-    setHomeData((prev: HomeData) => {
-      const newTasks = [...prev.urgentTasks];
-      newTasks[index] = { ...newTasks[index], content: value };
-      return { ...prev, urgentTasks: newTasks };
-    });
-  };
-  
-  const toggleUrgentTaskComplete = (index: number) => {
-    setHomeData((prev: HomeData) => {
-      const newTasks = [...prev.urgentTasks];
-      newTasks[index] = { ...newTasks[index], completed: !newTasks[index].completed };
-      return { ...prev, urgentTasks: newTasks };
-    });
-  };
-  
-  const deleteUrgentTask = (index: number) => {
-    setHomeData((prev: HomeData) => {
-      const newTasks = prev.urgentTasks.filter((_, i: number) => i !== index);
-      return { ...prev, urgentTasks: newTasks };
-    });
-    setSelectedUrgentTask(null);
-  };
-  
-  const moveUrgentTaskUp = (index: number) => {
-    if (index === 0) return; // 이미 최상위면 이동 불가
-    
-    setHomeData((prev: HomeData) => {
-      const newTasks = [...prev.urgentTasks];
-      const temp = newTasks[index];
-      newTasks[index] = newTasks[index - 1];
-      newTasks[index - 1] = temp;
-      return { ...prev, urgentTasks: newTasks };
-    });
-    
-    if (selectedUrgentTask === index) {
-      setSelectedUrgentTask(index - 1);
-    } else if (selectedUrgentTask === index - 1) {
-      setSelectedUrgentTask(index);
-    }
-  };
-  
-  const moveUrgentTaskDown = (index: number) => {
-    setHomeData((prev: HomeData) => {
-      const newTasks = [...prev.urgentTasks];
-      if (index >= newTasks.length - 1) return prev; // 이미 최하위면 이동 불가
+  // 일반 업무 추가 핸들러
+  const handleAddTask = async (group: string, month?: number) => {
+    try {
+      const monthValue = group === '정기업무' ? month || activeMonth : null;
       
-      const temp = newTasks[index];
-      newTasks[index] = newTasks[index + 1];
-      newTasks[index + 1] = temp;
-      return { ...prev, urgentTasks: newTasks };
-    });
-    
-    if (selectedUrgentTask === index) {
-      setSelectedUrgentTask(index + 1);
-    } else if (selectedUrgentTask === index + 1) {
-      setSelectedUrgentTask(index);
-    }
-  };
-  
-  // 일상업무 처리 함수들
-  const addRoutineTask = () => {
-    setHomeData((prev: HomeData) => ({
-      ...prev,
-      routineTasks: [...prev.routineTasks, { content: '', completed: false }]
-    }));
-  };
-  
-  const updateRoutineTask = (index: number, value: string) => {
-    setHomeData((prev: HomeData) => {
-      const newTasks = [...prev.routineTasks];
-      newTasks[index] = { ...newTasks[index], content: value };
-      return { ...prev, routineTasks: newTasks };
-    });
-  };
-  
-  const toggleRoutineTaskComplete = (index: number) => {
-    setHomeData((prev: HomeData) => {
-      const newTasks = [...prev.routineTasks];
-      newTasks[index] = { ...newTasks[index], completed: !newTasks[index].completed };
-      return { ...prev, routineTasks: newTasks };
-    });
-  };
-  
-  const deleteRoutineTask = (index: number) => {
-    setHomeData((prev: HomeData) => {
-      const newTasks = prev.routineTasks.filter((_, i: number) => i !== index);
-      return { ...prev, routineTasks: newTasks };
-    });
-    setSelectedRoutineTask(null);
-  };
-  
-  const moveRoutineTaskUp = (index: number) => {
-    if (index === 0) return; // 이미 최상위면 이동 불가
-    
-    setHomeData((prev: HomeData) => {
-      const newTasks = [...prev.routineTasks];
-      const temp = newTasks[index];
-      newTasks[index] = newTasks[index - 1];
-      newTasks[index - 1] = temp;
-      return { ...prev, routineTasks: newTasks };
-    });
-    
-    if (selectedRoutineTask === index) {
-      setSelectedRoutineTask(index - 1);
-    } else if (selectedRoutineTask === index - 1) {
-      setSelectedRoutineTask(index);
-    }
-  };
-  
-  const moveRoutineTaskDown = (index: number) => {
-    setHomeData((prev: HomeData) => {
-      const newTasks = [...prev.routineTasks];
-      if (index >= newTasks.length - 1) return prev; // 이미 최하위면 이동 불가
+      const { data, error } = await supabase
+        .from('todo_list')
+        .insert([{ 
+          group, 
+          todo: '', 
+          month: monthValue 
+        }])
+        .select();
       
-      const temp = newTasks[index];
-      newTasks[index] = newTasks[index + 1];
-      newTasks[index + 1] = temp;
-      return { ...prev, routineTasks: newTasks };
-    });
-    
-    if (selectedRoutineTask === index) {
-      setSelectedRoutineTask(index + 1);
-    } else if (selectedRoutineTask === index + 1) {
-      setSelectedRoutineTask(index);
+      if (error) {
+        console.error('항목 추가 오류:', error);
+      } else {
+        console.log('항목 추가 성공:', data);
+        await loadTodos();
+      }
+    } catch (error) {
+      console.error('예상치 못한 오류:', error);
     }
   };
-  
-  // 정기업무 처리 함수들
-  const addMonthlyTask = (month: number) => {
-    setHomeData((prev: HomeData) => {
-      const newMonthlyTasks = { ...prev.monthlyTasks };
-      newMonthlyTasks[month] = [...(newMonthlyTasks[month] || []), { content: '', completed: false }];
-      return { ...prev, monthlyTasks: newMonthlyTasks };
-    });
-  };
-  
-  const updateMonthlyTask = (month: number, index: number, value: string) => {
-    setHomeData((prev: HomeData) => {
-      const newMonthlyTasks = { ...prev.monthlyTasks };
-      const tasks = [...(newMonthlyTasks[month] || [])];
-      tasks[index] = { ...tasks[index], content: value };
-      newMonthlyTasks[month] = tasks;
-      return { ...prev, monthlyTasks: newMonthlyTasks };
-    });
-  };
-  
-  const toggleMonthlyTaskComplete = (month: number, index: number) => {
-    setHomeData((prev: HomeData) => {
-      const newMonthlyTasks = { ...prev.monthlyTasks };
-      const tasks = [...(newMonthlyTasks[month] || [])];
-      tasks[index] = { ...tasks[index], completed: !tasks[index].completed };
-      newMonthlyTasks[month] = tasks;
-      return { ...prev, monthlyTasks: newMonthlyTasks };
-    });
-  };
-  
-  const deleteMonthlyTask = (month: number, index: number) => {
-    setHomeData((prev: HomeData) => {
-      const newMonthlyTasks = { ...prev.monthlyTasks };
-      newMonthlyTasks[month] = newMonthlyTasks[month].filter((_, i: number) => i !== index);
-      return { ...prev, monthlyTasks: newMonthlyTasks };
-    });
-    setSelectedMonthlyTask(null);
-  };
-  
-  const moveMonthlyTaskUp = (month: number, index: number) => {
-    if (index === 0) return; // 이미 최상위면 이동 불가
-    
-    setHomeData((prev: HomeData) => {
-      const newMonthlyTasks = { ...prev.monthlyTasks };
-      const tasks = [...(newMonthlyTasks[month] || [])];
-      const temp = tasks[index];
-      tasks[index] = tasks[index - 1];
-      tasks[index - 1] = temp;
-      newMonthlyTasks[month] = tasks;
-      return { ...prev, monthlyTasks: newMonthlyTasks };
-    });
-    
-    if (selectedMonthlyTask === index) {
-      setSelectedMonthlyTask(index - 1);
-    } else if (selectedMonthlyTask === index - 1) {
-      setSelectedMonthlyTask(index);
-    }
-  };
-  
-  const moveMonthlyTaskDown = (month: number, index: number) => {
-    setHomeData((prev: HomeData) => {
-      const newMonthlyTasks = { ...prev.monthlyTasks };
-      const tasks = [...(newMonthlyTasks[month] || [])];
-      if (index >= tasks.length - 1) return prev; // 이미 최하위면 이동 불가
+
+  // 업무 수정 핸들러
+  const handleUpdateTask = async (group: string, index: number, value: string, month?: number) => {
+    try {
+      // Supabase 쿼리 빌더 초기화
+      let query = supabase
+        .from('todo_list')
+        .select('id')
+        .eq('group', group)
+        .order('id');
       
-      const temp = tasks[index];
-      tasks[index] = tasks[index + 1];
-      tasks[index + 1] = temp;
-      newMonthlyTasks[month] = tasks;
-      return { ...prev, monthlyTasks: newMonthlyTasks };
-    });
-    
-    if (selectedMonthlyTask === index) {
-      setSelectedMonthlyTask(index + 1);
-    } else if (selectedMonthlyTask === index + 1) {
-      setSelectedMonthlyTask(index);
+      // 정기업무인 경우 month 필터 추가
+      if (group === '정기업무' && month) {
+        query = query.eq('month', month);
+      } else if (group !== '정기업무') {
+        // 정기업무가 아닌 경우 month가 null인 항목만 필터링
+        query = query.is('month', null);
+      }
+      
+      const { data: existingData, error: fetchError } = await query;
+
+      if (fetchError) {
+        console.error('데이터 조회 오류:', fetchError);
+        return;
+      }
+
+      if (existingData && existingData[index]) {
+        const { error: updateError } = await supabase
+          .from('todo_list')
+          .update({ todo: value })
+          .eq('id', existingData[index].id);
+
+        if (updateError) console.error('업데이트 오류:', updateError);
+        else await loadTodos();
+      } else {
+        console.log('업데이트할 항목을 찾을 수 없음', { group, index, month });
+      }
+    } catch (error) {
+      console.error('예상치 못한 오류:', error);
     }
   };
-  
-  // 서버 사이드 렌더링 중에는 초기 컨텐츠만 표시
+
+  // 업무 삭제 핸들러
+  const handleDeleteTask = async (group: string, index: number, month?: number) => {
+    try {
+      // Supabase 쿼리 빌더 초기화
+      let query = supabase
+        .from('todo_list')
+        .select('id')
+        .eq('group', group)
+        .order('id');
+      
+      // 정기업무인 경우 month 필터 추가
+      if (group === '정기업무' && month) {
+        query = query.eq('month', month);
+      } else if (group !== '정기업무') {
+        // 정기업무가 아닌 경우 month가 null인 항목만 필터링
+        query = query.is('month', null);
+      }
+      
+      const { data: existingData, error: fetchError } = await query;
+
+      if (fetchError) {
+        console.error('데이터 조회 오류:', fetchError);
+        return;
+      }
+
+      if (existingData && existingData[index]) {
+        const { error: deleteError } = await supabase
+          .from('todo_list')
+          .delete()
+          .eq('id', existingData[index].id);
+
+        if (deleteError) console.error('삭제 오류:', deleteError);
+        else await loadTodos();
+      } else {
+        console.log('삭제할 항목을 찾을 수 없음', { group, index, month });
+      }
+    } catch (error) {
+      console.error('예상치 못한 오류:', error);
+    }
+  };
+
+  // 업무 순서 변경 핸들러 (위로)
+  const handleMoveUp = async (group: string, index: number, month?: number) => {
+    if (index === 0) return;
+    
+    try {
+      // Supabase 쿼리 빌더 초기화
+      let query = supabase
+        .from('todo_list')
+        .select('id, todo')
+        .eq('group', group)
+        .order('id');
+      
+      // 정기업무인 경우 month 필터 추가
+      if (group === '정기업무' && month) {
+        query = query.eq('month', month);
+      } else if (group !== '정기업무') {
+        // 정기업무가 아닌 경우 month가 null인 항목만 필터링
+        query = query.is('month', null);
+      }
+      
+      const { data: existingData, error: fetchError } = await query;
+
+      if (fetchError || !existingData || existingData.length < 2) {
+        console.error('데이터 조회 오류:', fetchError);
+        return;
+      }
+
+      const currentId = existingData[index].id;
+      const prevId = existingData[index - 1].id;
+      const currentTodo = existingData[index].todo;
+      const prevTodo = existingData[index - 1].todo;
+
+      const { error: updateError } = await supabase
+        .from('todo_list')
+        .upsert([
+          { id: currentId, todo: prevTodo },
+          { id: prevId, todo: currentTodo }
+        ]);
+
+      if (updateError) console.error('위치 변경 오류:', updateError);
+      else await loadTodos();
+    } catch (error) {
+      console.error('예상치 못한 오류:', error);
+    }
+  };
+
+  // 업무 순서 변경 핸들러 (아래로)
+  const handleMoveDown = async (group: string, index: number, month?: number) => {
+    try {
+      // Supabase 쿼리 빌더 초기화
+      let query = supabase
+        .from('todo_list')
+        .select('id, todo')
+        .eq('group', group)
+        .order('id');
+      
+      // 정기업무인 경우 month 필터 추가
+      if (group === '정기업무' && month) {
+        query = query.eq('month', month);
+      } else if (group !== '정기업무') {
+        // 정기업무가 아닌 경우 month가 null인 항목만 필터링
+        query = query.is('month', null);
+      }
+      
+      const { data: existingData, error: fetchError } = await query;
+
+      if (fetchError || !existingData || index >= existingData.length - 1) {
+        console.error('데이터 조회 오류:', fetchError);
+        return;
+      }
+
+      const currentId = existingData[index].id;
+      const nextId = existingData[index + 1].id;
+      const currentTodo = existingData[index].todo;
+      const nextTodo = existingData[index + 1].todo;
+
+      const { error: updateError } = await supabase
+        .from('todo_list')
+        .upsert([
+          { id: currentId, todo: nextTodo },
+          { id: nextId, todo: currentTodo }
+        ]);
+
+      if (updateError) console.error('위치 변경 오류:', updateError);
+      else await loadTodos();
+    } catch (error) {
+      console.error('예상치 못한 오류:', error);
+    }
+  };
+
   if (!isClient) {
-    return (
-      <div className="notebook-container">
-        <h1 className="notebook-title">업무 관리 노트북</h1>
-        <div className="loading">로딩 중...</div>
-      </div>
-    );
+    return <div className="notebook-outer"><div className="notebook-container">로딩 중...</div></div>;
   }
-  
+
   return (
     <div className="notebook-outer">
       <div className="notebook-container">
         <div className="notebook-cells">
-          {/* 당면업무 셀 */}
           <TaskCell
             title="당면업무"
-            tasks={homeData.urgentTasks}
-            onAdd={addUrgentTask}
-            onUpdate={updateUrgentTask}
-            onDelete={deleteUrgentTask}
-            onMoveUp={moveUrgentTaskUp}
-            onMoveDown={moveUrgentTaskDown}
+            tasks={urgentTasks}
+            onAdd={() => handleAddTask('당면업무')}
+            onUpdate={(index, value) => handleUpdateTask('당면업무', index, value)}
+            onDelete={(index) => handleDeleteTask('당면업무', index)}
+            onMoveUp={(index) => handleMoveUp('당면업무', index)}
+            onMoveDown={(index) => handleMoveDown('당면업무', index)}
             placeholder="당면업무를 입력하세요"
           />
-          
-          {/* 일상업무 셀 */}
           <TaskCell
             title="일상업무"
-            tasks={homeData.routineTasks}
-            onAdd={addRoutineTask}
-            onUpdate={updateRoutineTask}
-            onDelete={deleteRoutineTask}
-            onMoveUp={moveRoutineTaskUp}
-            onMoveDown={moveRoutineTaskDown}
+            tasks={routineTasks}
+            onAdd={() => handleAddTask('일상업무')}
+            onUpdate={(index, value) => handleUpdateTask('일상업무', index, value)}
+            onDelete={(index) => handleDeleteTask('일상업무', index)}
+            onMoveUp={(index) => handleMoveUp('일상업무', index)}
+            onMoveDown={(index) => handleMoveDown('일상업무', index)}
             placeholder="일상업무를 입력하세요"
           />
-          
-          {/* 월별 정기업무 셀 */}
           <MonthlyTaskCell
             title="월별 정기업무"
             activeMonth={activeMonth}
-            monthlyTasks={homeData.monthlyTasks}
-            onAdd={addMonthlyTask}
-            onUpdate={updateMonthlyTask}
-            onDelete={deleteMonthlyTask}
-            onMoveUp={moveMonthlyTaskUp}
-            onMoveDown={moveMonthlyTaskDown}
+            monthlyTasks={monthlyTasks}
+            onAdd={(month) => handleAddTask('정기업무', month)}
+            onUpdate={(month, index, value) => handleUpdateTask('정기업무', index, value, month)}
+            onDelete={(month, index) => handleDeleteTask('정기업무', index, month)}
+            onMoveUp={(month, index) => handleMoveUp('정기업무', index, month)}
+            onMoveDown={(month, index) => handleMoveDown('정기업무', index, month)}
             onChangeMonth={setActiveMonth}
           />
         </div>
