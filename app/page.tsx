@@ -8,6 +8,7 @@ interface TaskItem {
   id?: number;
   content: string;
   completed: boolean;
+  isDirty?: boolean; // 변경 여부를 추적하는 플래그
 }
 
 // 정기업무 월별 리스트 타입
@@ -48,6 +49,7 @@ function TaskCell({
   tasks,
   onAdd,
   onUpdate,
+  onSave,
   onDelete,
   onMoveUp,
   onMoveDown,
@@ -57,6 +59,7 @@ function TaskCell({
   tasks: TaskItem[];
   onAdd: () => void;
   onUpdate: (index: number, value: string) => void;
+  onSave: (index: number) => void;
   onDelete: (index: number) => void;
   onMoveUp: (index: number) => void;
   onMoveDown: (index: number) => void;
@@ -83,7 +86,7 @@ function TaskCell({
               value={task.content || ''}
               onChange={(e) => onUpdate(index, e.target.value)}
               placeholder={focusedIndex !== index && (!task.content || task.content === 'null') ? placeholder : ''}
-              className="form-input"
+              className={`form-input ${task.isDirty ? 'border-yellow-500' : ''}`}
               onFocus={() => setFocusedIndex(index)}
               onBlur={() => setFocusedIndex(null)}
             />
@@ -100,6 +103,12 @@ function TaskCell({
                 disabled={index === tasks.length - 1}
                 title="아래로 이동"
               >▼</button>
+              <button 
+                className={`btn ${task.isDirty ? 'btn-warning' : 'btn-success'} btn-sm`}
+                onClick={() => onSave(index)}
+                title="저장"
+                disabled={!task.isDirty}
+              >저장</button>
               <button 
                 className="btn btn-outline btn-sm"
                 onClick={() => onDelete(index)}
@@ -120,6 +129,7 @@ function MonthlyTaskCell({
   monthlyTasks,
   onAdd,
   onUpdate,
+  onSave,
   onDelete,
   onMoveUp,
   onMoveDown,
@@ -130,6 +140,7 @@ function MonthlyTaskCell({
   monthlyTasks: MonthlyTasks;
   onAdd: (month: number) => void;
   onUpdate: (month: number, index: number, value: string) => void;
+  onSave: (month: number, index: number) => void;
   onDelete: (month: number, index: number) => void;
   onMoveUp: (month: number, index: number) => void;
   onMoveDown: (month: number, index: number) => void;
@@ -167,7 +178,7 @@ function MonthlyTaskCell({
               value={task.content || ''}
               onChange={(e) => onUpdate(activeMonth, index, e.target.value)}
               placeholder={focusedIndex !== index && (!task.content || task.content === 'null') ? `${activeMonth}월 정기업무를 입력하세요` : ''}
-              className="form-input"
+              className={`form-input ${task.isDirty ? 'border-yellow-500' : ''}`}
               onFocus={() => setFocusedIndex(index)}
               onBlur={() => setFocusedIndex(null)}
             />
@@ -184,6 +195,12 @@ function MonthlyTaskCell({
                 disabled={index === monthlyTasks[activeMonth].length - 1}
                 title="아래로 이동"
               >▼</button>
+              <button 
+                className={`btn ${task.isDirty ? 'btn-warning' : 'btn-success'} btn-sm`}
+                onClick={() => onSave(activeMonth, index)}
+                title="저장"
+                disabled={!task.isDirty}
+              >저장</button>
               <button 
                 className="btn btn-outline btn-sm"
                 onClick={() => onDelete(activeMonth, index)}
@@ -469,6 +486,122 @@ export default function Home() {
     }
   };
 
+  // 로컬 업무 업데이트 핸들러
+  const handleLocalUpdate = (group: string, index: number, value: string, month?: number) => {
+    try {
+      if (group === '당면업무') {
+        setUrgentTasks(prev => {
+          const updated = [...prev];
+          if (updated[index]) {
+            updated[index] = { ...updated[index], content: value, isDirty: true };
+          }
+          return updated;
+        });
+      } else if (group === '일상업무') {
+        setRoutineTasks(prev => {
+          const updated = [...prev];
+          if (updated[index]) {
+            updated[index] = { ...updated[index], content: value, isDirty: true };
+          }
+          return updated;
+        });
+      } else if (group === '정기업무' && month) {
+        setMonthlyTasks(prev => {
+          const updated = { ...prev };
+          if (updated[month] && updated[month][index]) {
+            updated[month] = [...updated[month]];
+            updated[month][index] = { ...updated[month][index], content: value, isDirty: true };
+          }
+          return updated;
+        });
+      }
+    } catch (error) {
+      console.error('로컬 상태 업데이트 오류:', error);
+    }
+  };
+
+  // 업무 저장 핸들러
+  const handleSaveTask = async (group: string, index: number, month?: number) => {
+    try {
+      let content = '';
+      
+      // 해당 그룹과 인덱스의 콘텐츠 가져오기
+      if (group === '당면업무' && urgentTasks[index]) {
+        content = urgentTasks[index].content;
+      } else if (group === '일상업무' && routineTasks[index]) {
+        content = routineTasks[index].content;
+      } else if (group === '정기업무' && month && monthlyTasks[month][index]) {
+        content = monthlyTasks[month][index].content;
+      }
+      
+      // Supabase 쿼리 빌더 초기화
+      let query = supabase
+        .from('todo_list')
+        .select('id')
+        .eq('group', group)
+        .order('id');
+      
+      // 필터 추가
+      if (group === '정기업무' && month) {
+        query = query.eq('month', month);
+      } else if (group !== '정기업무') {
+        query = query.is('month', null);
+      }
+      
+      const { data: existingData, error: fetchError } = await query;
+
+      if (fetchError) {
+        console.error('데이터 조회 오류:', fetchError);
+        return;
+      }
+
+      if (existingData && existingData[index]) {
+        const { error: updateError } = await supabase
+          .from('todo_list')
+          .update({ todo: content })
+          .eq('id', existingData[index].id);
+
+        if (updateError) {
+          console.error('저장 오류:', updateError);
+        } else {
+          console.log('저장 성공:', { group, index, content });
+          
+          // isDirty 플래그 초기화
+          if (group === '당면업무') {
+            setUrgentTasks(prev => {
+              const updated = [...prev];
+              if (updated[index]) {
+                updated[index] = { ...updated[index], isDirty: false };
+              }
+              return updated;
+            });
+          } else if (group === '일상업무') {
+            setRoutineTasks(prev => {
+              const updated = [...prev];
+              if (updated[index]) {
+                updated[index] = { ...updated[index], isDirty: false };
+              }
+              return updated;
+            });
+          } else if (group === '정기업무' && month) {
+            setMonthlyTasks(prev => {
+              const updated = { ...prev };
+              if (updated[month] && updated[month][index]) {
+                updated[month] = [...updated[month]];
+                updated[month][index] = { ...updated[month][index], isDirty: false };
+              }
+              return updated;
+            });
+          }
+        }
+      } else {
+        console.log('저장할 항목을 찾을 수 없음', { group, index, month });
+      }
+    } catch (error) {
+      console.error('예상치 못한 오류:', error);
+    }
+  };
+
   if (!isClient) {
     return <div className="notebook-outer"><div className="notebook-container">로딩 중...</div></div>;
   }
@@ -481,7 +614,8 @@ export default function Home() {
             title="당면업무"
             tasks={urgentTasks}
             onAdd={() => handleAddTask('당면업무')}
-            onUpdate={(index, value) => handleUpdateTask('당면업무', index, value)}
+            onUpdate={(index, value) => handleLocalUpdate('당면업무', index, value)}
+            onSave={(index) => handleSaveTask('당면업무', index)}
             onDelete={(index) => handleDeleteTask('당면업무', index)}
             onMoveUp={(index) => handleMoveUp('당면업무', index)}
             onMoveDown={(index) => handleMoveDown('당면업무', index)}
@@ -491,7 +625,8 @@ export default function Home() {
             title="일상업무"
             tasks={routineTasks}
             onAdd={() => handleAddTask('일상업무')}
-            onUpdate={(index, value) => handleUpdateTask('일상업무', index, value)}
+            onUpdate={(index, value) => handleLocalUpdate('일상업무', index, value)}
+            onSave={(index) => handleSaveTask('일상업무', index)}
             onDelete={(index) => handleDeleteTask('일상업무', index)}
             onMoveUp={(index) => handleMoveUp('일상업무', index)}
             onMoveDown={(index) => handleMoveDown('일상업무', index)}
@@ -502,7 +637,8 @@ export default function Home() {
             activeMonth={activeMonth}
             monthlyTasks={monthlyTasks}
             onAdd={(month) => handleAddTask('정기업무', month)}
-            onUpdate={(month, index, value) => handleUpdateTask('정기업무', index, value, month)}
+            onUpdate={(month, index, value) => handleLocalUpdate('정기업무', index, value, month)}
+            onSave={(month, index) => handleSaveTask('정기업무', index, month)}
             onDelete={(month, index) => handleDeleteTask('정기업무', index, month)}
             onMoveUp={(month, index) => handleMoveUp('정기업무', index, month)}
             onMoveDown={(month, index) => handleMoveDown('정기업무', index, month)}
