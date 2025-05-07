@@ -94,28 +94,30 @@ function TaskCell({
   
   return (
     <div className="summary-card">
-      <div className="flex items-center mb-4">
-        <span className="font-semibold text-base flex-1">{title}</span>
-        <div className="flex space-x-1">
-          <button 
-            className="btn btn-outline btn-sm"
-            onClick={handleMoveUp}
-            disabled={selectedIndex === null || selectedIndex === 0}
-            title="선택 항목 위로 이동"
-          >▲</button>
-          <button 
-            className="btn btn-outline btn-sm"
-            onClick={handleMoveDown}
-            disabled={selectedIndex === null || selectedIndex === tasks.length - 1}
-            title="선택 항목 아래로 이동"
-          >▼</button>
-          <button 
-            className="btn btn-primary btn-sm"
-            onClick={onAdd}
-            title="새 항목 추가"
-          >
-            + 추가
-          </button>
+      <div className="flex items-center mb-4 justify-between">
+        <div className="flex items-center">
+          <span className="font-semibold text-base mr-2">{title}</span>
+          <div className="flex space-x-1">
+            <button 
+              className="btn btn-outline btn-xs"
+              onClick={handleMoveUp}
+              disabled={selectedIndex === null || selectedIndex === 0}
+              title="선택 항목 위로 이동"
+            >▲</button>
+            <button 
+              className="btn btn-outline btn-xs"
+              onClick={handleMoveDown}
+              disabled={selectedIndex === null || selectedIndex === tasks.length - 1}
+              title="선택 항목 아래로 이동"
+            >▼</button>
+            <button 
+              className="btn btn-primary btn-xs"
+              onClick={onAdd}
+              title="새 항목 추가"
+            >
+              + 추가
+            </button>
+          </div>
         </div>
       </div>
       <div>
@@ -220,28 +222,30 @@ function MonthlyTaskCell({
   
   return (
     <div className="summary-card">
-      <div className="flex items-center mb-4">
-        <span className="font-semibold text-base flex-1">{title}</span>
-        <div className="flex space-x-1">
-          <button 
-            className="btn btn-outline btn-sm"
-            onClick={handleMoveUp}
-            disabled={selectedIndex === null || selectedIndex === 0}
-            title="선택 항목 위로 이동"
-          >▲</button>
-          <button 
-            className="btn btn-outline btn-sm"
-            onClick={handleMoveDown}
-            disabled={selectedIndex === null || selectedIndex === activeTasks.length - 1}
-            title="선택 항목 아래로 이동"
-          >▼</button>
-          <button 
-            className="btn btn-primary btn-sm"
-            onClick={() => onAdd(activeMonth)}
-            title="새 항목 추가"
-          >
-            + 추가
-          </button>
+      <div className="flex items-center mb-4 justify-between">
+        <div className="flex items-center">
+          <span className="font-semibold text-base mr-2">{title}</span>
+          <div className="flex space-x-1">
+            <button 
+              className="btn btn-outline btn-xs"
+              onClick={handleMoveUp}
+              disabled={selectedIndex === null || selectedIndex === 0}
+              title="선택 항목 위로 이동"
+            >▲</button>
+            <button 
+              className="btn btn-outline btn-xs"
+              onClick={handleMoveDown}
+              disabled={selectedIndex === null || selectedIndex === activeTasks.length - 1}
+              title="선택 항목 아래로 이동"
+            >▼</button>
+            <button 
+              className="btn btn-primary btn-xs"
+              onClick={() => onAdd(activeMonth)}
+              title="새 항목 추가"
+            >
+              + 추가
+            </button>
+          </div>
         </div>
       </div>
       <div className="mb-2 flex flex-wrap gap-1 mt-6">
