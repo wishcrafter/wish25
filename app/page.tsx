@@ -351,7 +351,7 @@ export default function Home() {
     }
   }, [selectedMonthlyIndex, monthlyTasks, activeMonth]);
   
-  // 데이터 로드 함수
+  // 데이터 로드 및 정렬 함수
   const loadTodos = async () => {
     try {
       // 선택된 ID 저장 (기존 선택 항목을 다시 찾기 위함)
@@ -360,7 +360,8 @@ export default function Home() {
       const savedMonthlyId = selectedMonthlyId;
       
       // ID 정렬을 위한 데이터 로드 및 업데이트 (소수점 ID 정규화)
-      await normalizeIds();
+      // 임시로 주석 처리 - ID 정규화 작업 제외
+      // await normalizeIds();
       
       const { data, error } = await supabase
         .from('todo_list')
@@ -482,7 +483,7 @@ export default function Home() {
       // Supabase 쿼리 빌더 초기화
       let query = supabase
         .from('todo_list')
-        .select('id, todo')
+        .select('*')  // 모든 필드 선택
         .eq('group', group)
         .order('id');
       
@@ -507,48 +508,44 @@ export default function Home() {
       if (hasDecimalIds || data.length > 0) {
         console.log(`${group}${month ? ' ' + month + '월' : ''} ID 정규화 시작, 항목 수:`, data.length);
         
-        // ID 재할당 (1부터 순차적으로)
-        const updates = data
-          .sort((a, b) => a.id - b.id) // ID로 정렬
-          .map((item, index) => ({ 
-            old_id: item.id,
-            new_id: index + 1, // 1부터 시작하는 새 ID
-            todo: item.todo
-          }));
+        // ID 순서대로 정렬
+        const sortedItems = [...data].sort((a, b) => a.id - b.id);
         
-        // 각 항목 업데이트 (임시 ID 사용)
-        for (const update of updates) {
-          const tempId = update.new_id + 10000; // 임시 ID (충돌 방지)
+        // 새 항목 생성 (ID 재할당은 Supabase가 자동으로 수행)
+        for (let i = 0; i < sortedItems.length; i++) {
+          const item = sortedItems[i];
           
-          let updateQuery = supabase
-            .from('todo_list')
-            .update({ id: tempId })
-            .eq('id', update.old_id);
+          try {
+            // 항목 복제를 위한 새 객체 생성 (ID 제외)
+            const newItem = { 
+              group: item.group,
+              todo: item.todo,
+              month: item.month
+            };
             
-          if (group === '정기업무' && month) {
-            updateQuery = updateQuery.eq('month', month);
-          }
-          
-          const { error: updateError } = await updateQuery;
-          if (updateError) {
-            console.error('임시 ID 변경 오류:', updateError);
-          }
-        }
-        
-        // 임시 ID에서 최종 ID로 변경
-        for (const update of updates) {
-          let finalUpdateQuery = supabase
-            .from('todo_list')
-            .update({ id: update.new_id })
-            .eq('id', update.new_id + 10000);
+            // 새 항목 추가
+            const { data: insertData, error: insertError } = await supabase
+              .from('todo_list')
+              .insert([newItem])
+              .select();
+              
+            if (insertError) {
+              console.error('항목 복제 오류:', insertError);
+              continue;
+            }
             
-          if (group === '정기업무' && month) {
-            finalUpdateQuery = finalUpdateQuery.eq('month', month);
-          }
-          
-          const { error: finalUpdateError } = await finalUpdateQuery;
-          if (finalUpdateError) {
-            console.error('최종 ID 변경 오류:', finalUpdateError);
+            // 기존 항목 삭제
+            const { error: deleteError } = await supabase
+              .from('todo_list')
+              .delete()
+              .eq('id', item.id);
+              
+            if (deleteError) {
+              console.error('기존 항목 삭제 오류:', deleteError);
+            }
+            
+          } catch (itemError) {
+            console.error('항목 처리 오류:', itemError);
           }
         }
         
@@ -752,15 +749,14 @@ export default function Home() {
         setSelectedMonthlyIndex(index - 1);
       }
       
-      // 위로 이동할 항목과 현재 항목 사이의 순서값 계산
-      const newPosition = prevItem.id;
-      
-      // 선택된 항목 위치 변경 (ID는 유지)
+      // 내용 교환 방식으로 위치 변경 (ID 필드를 직접 수정하지 않음)
       const { error: updateError } = await supabase
         .from('todo_list')
-        .update({ id: newPosition - 0.5 })
-        .eq('id', selectedItemId);
-        
+        .upsert([
+          { id: currentItem.id, todo: prevItem.todo },
+          { id: prevItem.id, todo: currentItem.todo }
+        ]);
+      
       if (updateError) {
         console.error('위치 변경 오류:', updateError);
         return;
@@ -845,15 +841,14 @@ export default function Home() {
         setSelectedMonthlyIndex(index + 1);
       }
       
-      // 아래로 이동할 항목과 현재 항목 사이의 순서값 계산
-      const newPosition = nextItem.id;
-      
-      // 선택된 항목 위치 변경 (ID는 유지)
+      // 내용 교환 방식으로 위치 변경 (ID 필드를 직접 수정하지 않음)
       const { error: updateError } = await supabase
         .from('todo_list')
-        .update({ id: newPosition + 0.5 })
-        .eq('id', selectedItemId);
-        
+        .upsert([
+          { id: currentItem.id, todo: nextItem.todo },
+          { id: nextItem.id, todo: currentItem.todo }
+        ]);
+      
       if (updateError) {
         console.error('위치 변경 오류:', updateError);
         return;
