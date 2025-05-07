@@ -47,6 +47,8 @@ const initialData: HomeData = {
 function TaskCell({
   title,
   tasks,
+  selectedIndex,
+  onSelect,
   onAdd,
   onUpdate,
   onSave,
@@ -57,6 +59,8 @@ function TaskCell({
 }: {
   title: string;
   tasks: TaskItem[];
+  selectedIndex: number | null;
+  onSelect: (index: number | null) => void;
   onAdd: () => void;
   onUpdate: (index: number, value: string) => void;
   onSave: (index: number) => void;
@@ -66,15 +70,19 @@ function TaskCell({
   placeholder: string;
 }) {
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   
   const handleRowClick = (index: number) => {
-    setSelectedIndex(index);
+    console.log('항목 선택:', index);
+    onSelect(index === selectedIndex ? null : index); // 같은 항목 클릭 시 선택 해제
   };
   
   const handleMoveUp = () => {
+    console.log('TaskCell handleMoveUp 호출, selectedIndex:', selectedIndex);
     if (selectedIndex !== null && selectedIndex > 0) {
+      console.log('onMoveUp 함수 호출 직전, 인덱스:', selectedIndex);
       onMoveUp(selectedIndex);
+    } else {
+      console.log('이동 불가: selectedIndex가 null이거나 0임');
     }
   };
   
@@ -114,7 +122,7 @@ function TaskCell({
         {tasks.map((task, index) => (
           <div 
             key={`task-${index}`} 
-            className={`task-row-flex ${selectedIndex === index ? 'bg-blue-100 border-blue-500' : ''}`}
+            className={`task-row-flex cursor-pointer ${selectedIndex === index ? 'bg-blue-100 border-blue-500 border-2' : ''}`}
             onClick={() => handleRowClick(index)}
           >
             <input
@@ -125,7 +133,11 @@ function TaskCell({
               className={`form-input flex-1 ${task.isDirty ? 'border-yellow-500' : ''}`}
               onFocus={() => setFocusedIndex(index)}
               onBlur={() => setFocusedIndex(null)}
-              onClick={(e) => e.stopPropagation()} // 부모 div의 클릭 이벤트 전파 방지
+              onClick={(e) => {
+                e.stopPropagation();
+                // 입력창 클릭해도 해당 항목 선택
+                handleRowClick(index);
+              }}
             />
             <div className="task-controls-horizontal" onClick={(e) => e.stopPropagation()}>
               <button 
@@ -158,6 +170,8 @@ function MonthlyTaskCell({
   title,
   activeMonth,
   monthlyTasks,
+  selectedIndex,
+  onSelect,
   onAdd,
   onUpdate,
   onSave,
@@ -169,6 +183,8 @@ function MonthlyTaskCell({
   title: string;
   activeMonth: number;
   monthlyTasks: MonthlyTasks;
+  selectedIndex: number | null;
+  onSelect: (index: number | null) => void;
   onAdd: (month: number) => void;
   onUpdate: (month: number, index: number, value: string) => void;
   onSave: (month: number, index: number) => void;
@@ -178,11 +194,11 @@ function MonthlyTaskCell({
   onChangeMonth: (month: number) => void;
 }) {
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const activeTasks = monthlyTasks[activeMonth] || [];
   
   const handleRowClick = (index: number) => {
-    setSelectedIndex(index);
+    console.log('항목 선택:', index);
+    onSelect(index === selectedIndex ? null : index); // 같은 항목 클릭 시 선택 해제
   };
   
   const handleMoveUp = () => {
@@ -199,8 +215,8 @@ function MonthlyTaskCell({
   
   // 월이 변경되면 선택된 항목 초기화
   useEffect(() => {
-    setSelectedIndex(null);
-  }, [activeMonth]);
+    onSelect(null);
+  }, [activeMonth, onSelect]);
   
   return (
     <div className="summary-card">
@@ -243,7 +259,7 @@ function MonthlyTaskCell({
         {activeTasks.map((task, index) => (
           <div 
             key={`monthly-${activeMonth}-${index}`} 
-            className={`task-row-flex ${selectedIndex === index ? 'bg-blue-100 border-blue-500' : ''}`}
+            className={`task-row-flex cursor-pointer ${selectedIndex === index ? 'bg-blue-100 border-blue-500 border-2' : ''}`}
             onClick={() => handleRowClick(index)}
           >
             <input
@@ -254,7 +270,11 @@ function MonthlyTaskCell({
               className={`form-input flex-1 ${task.isDirty ? 'border-yellow-500' : ''}`}
               onFocus={() => setFocusedIndex(index)}
               onBlur={() => setFocusedIndex(null)}
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                // 입력창 클릭해도 해당 항목 선택
+                handleRowClick(index);
+              }}
             />
             <div className="task-controls-horizontal" onClick={(e) => e.stopPropagation()}>
               <button 
@@ -293,7 +313,12 @@ export default function Home() {
     return init;
   });
   const [activeMonth, setActiveMonth] = useState<number>(new Date().getMonth() + 1);
-
+  
+  // 선택된 항목의 인덱스를 저장하는 상태 변수 추가
+  const [selectedUrgentIndex, setSelectedUrgentIndex] = useState<number | null>(null);
+  const [selectedRoutineIndex, setSelectedRoutineIndex] = useState<number | null>(null);
+  const [selectedMonthlyIndex, setSelectedMonthlyIndex] = useState<number | null>(null);
+  
   // 데이터 로드 함수
   const loadTodos = async () => {
     try {
@@ -466,7 +491,12 @@ export default function Home() {
 
   // 업무 순서 변경 핸들러 (위로)
   const handleMoveUp = async (group: string, index: number, month?: number) => {
-    if (index === 0) return;
+    console.log('Home 컴포넌트 handleMoveUp 호출됨:', { group, index, month });
+    
+    if (index === 0) {
+      console.log('첫 번째 항목이라 이동 불가');
+      return;
+    }
     
     try {
       console.log('위로 이동 시작:', { group, index, month });
@@ -734,6 +764,20 @@ export default function Home() {
     }
   };
 
+  // 디버깅용 콘솔 출력
+  useEffect(() => {
+    console.log('현재 상태:', { 
+      urgentTasks, 
+      routineTasks, 
+      monthlyTasks,
+      activeMonth,
+      selectedUrgentIndex,
+      selectedRoutineIndex,
+      selectedMonthlyIndex
+    });
+  }, [urgentTasks, routineTasks, monthlyTasks, activeMonth, 
+      selectedUrgentIndex, selectedRoutineIndex, selectedMonthlyIndex]);
+
   if (!isClient) {
     return <div className="notebook-outer"><div className="notebook-container">로딩 중...</div></div>;
   }
@@ -745,36 +789,63 @@ export default function Home() {
           <TaskCell
             title="당면업무"
             tasks={urgentTasks}
+            selectedIndex={selectedUrgentIndex}
+            onSelect={setSelectedUrgentIndex}
             onAdd={() => handleAddTask('당면업무')}
             onUpdate={(index, value) => handleLocalUpdate('당면업무', index, value)}
             onSave={(index) => handleSaveTask('당면업무', index)}
             onDelete={(index) => handleDeleteTask('당면업무', index)}
-            onMoveUp={(index) => handleMoveUp('당면업무', index)}
-            onMoveDown={(index) => handleMoveDown('당면업무', index)}
+            onMoveUp={(index) => {
+              console.log('당면업무 onMoveUp 호출됨, 인덱스:', index);
+              handleMoveUp('당면업무', index);
+            }}
+            onMoveDown={(index) => {
+              console.log('당면업무 onMoveDown 호출됨, 인덱스:', index);
+              handleMoveDown('당면업무', index);
+            }}
             placeholder="당면업무를 입력하세요"
           />
           <TaskCell
             title="일상업무"
             tasks={routineTasks}
+            selectedIndex={selectedRoutineIndex}
+            onSelect={setSelectedRoutineIndex}
             onAdd={() => handleAddTask('일상업무')}
             onUpdate={(index, value) => handleLocalUpdate('일상업무', index, value)}
             onSave={(index) => handleSaveTask('일상업무', index)}
             onDelete={(index) => handleDeleteTask('일상업무', index)}
-            onMoveUp={(index) => handleMoveUp('일상업무', index)}
-            onMoveDown={(index) => handleMoveDown('일상업무', index)}
+            onMoveUp={(index) => {
+              console.log('일상업무 onMoveUp 호출됨, 인덱스:', index);
+              handleMoveUp('일상업무', index);
+            }}
+            onMoveDown={(index) => {
+              console.log('일상업무 onMoveDown 호출됨, 인덱스:', index);
+              handleMoveDown('일상업무', index);
+            }}
             placeholder="일상업무를 입력하세요"
           />
           <MonthlyTaskCell
             title="월별 정기업무"
             activeMonth={activeMonth}
             monthlyTasks={monthlyTasks}
+            selectedIndex={selectedMonthlyIndex}
+            onSelect={setSelectedMonthlyIndex}
             onAdd={(month) => handleAddTask('정기업무', month)}
             onUpdate={(month, index, value) => handleLocalUpdate('정기업무', index, value, month)}
             onSave={(month, index) => handleSaveTask('정기업무', index, month)}
             onDelete={(month, index) => handleDeleteTask('정기업무', index, month)}
-            onMoveUp={(month, index) => handleMoveUp('정기업무', index, month)}
-            onMoveDown={(month, index) => handleMoveDown('정기업무', index, month)}
-            onChangeMonth={setActiveMonth}
+            onMoveUp={(month, index) => {
+              console.log('정기업무 onMoveUp 호출됨, 월:', month, '인덱스:', index);
+              handleMoveUp('정기업무', index, month);
+            }}
+            onMoveDown={(month, index) => {
+              console.log('정기업무 onMoveDown 호출됨, 월:', month, '인덱스:', index);
+              handleMoveDown('정기업무', index, month);
+            }}
+            onChangeMonth={(month) => {
+              setActiveMonth(month);
+              setSelectedMonthlyIndex(null); // 월 변경 시 선택 항목 초기화
+            }}
           />
         </div>
       </div>
