@@ -359,6 +359,9 @@ export default function Home() {
       const savedRoutineId = selectedRoutineId;
       const savedMonthlyId = selectedMonthlyId;
       
+      // ID 정렬을 위한 데이터 로드 및 업데이트 (소수점 ID 정규화)
+      await normalizeIds();
+      
       const { data, error } = await supabase
         .from('todo_list')
         .select('id, group, todo, month')
@@ -447,6 +450,114 @@ export default function Home() {
       }
     } catch (error) {
       console.error('예상치 못한 오류:', error);
+    }
+  };
+  
+  // ID 정규화 함수 - 소수점 ID를 정수로 변환
+  const normalizeIds = async () => {
+    try {
+      // 각 그룹별로 데이터 로드
+      const groups = ['당면업무', '일상업무', '정기업무'];
+      
+      for (const group of groups) {
+        // 월별 정기업무 처리
+        if (group === '정기업무') {
+          for (let month = 1; month <= 12; month++) {
+            await normalizeGroupIds(group, month);
+          }
+        } else {
+          await normalizeGroupIds(group);
+        }
+      }
+      
+      console.log('ID 정규화 완료');
+    } catch (error) {
+      console.error('ID 정규화 오류:', error);
+    }
+  };
+  
+  // 그룹별 ID 정규화
+  const normalizeGroupIds = async (group: string, month?: number) => {
+    try {
+      // Supabase 쿼리 빌더 초기화
+      let query = supabase
+        .from('todo_list')
+        .select('id, todo')
+        .eq('group', group)
+        .order('id');
+      
+      // 정기업무인 경우 month 필터 추가
+      if (group === '정기업무' && month) {
+        query = query.eq('month', month);
+      } else if (group !== '정기업무') {
+        // 정기업무가 아닌 경우 month가 null인 항목만 필터링
+        query = query.is('month', null);
+      }
+      
+      const { data, error } = await query;
+      
+      if (error || !data) {
+        console.error('그룹 데이터 조회 오류:', error);
+        return;
+      }
+      
+      // ID가 소수점인 항목이 있는지 확인
+      const hasDecimalIds = data.some(item => Math.floor(item.id) !== item.id);
+      
+      if (hasDecimalIds || data.length > 0) {
+        console.log(`${group}${month ? ' ' + month + '월' : ''} ID 정규화 시작, 항목 수:`, data.length);
+        
+        // ID 재할당 (1부터 순차적으로)
+        const updates = data
+          .sort((a, b) => a.id - b.id) // ID로 정렬
+          .map((item, index) => ({ 
+            old_id: item.id,
+            new_id: index + 1, // 1부터 시작하는 새 ID
+            todo: item.todo
+          }));
+        
+        // 각 항목 업데이트 (임시 ID 사용)
+        for (const update of updates) {
+          const tempId = update.new_id + 10000; // 임시 ID (충돌 방지)
+          
+          let updateQuery = supabase
+            .from('todo_list')
+            .update({ id: tempId })
+            .eq('id', update.old_id);
+            
+          if (group === '정기업무' && month) {
+            updateQuery = updateQuery.eq('month', month);
+          }
+          
+          const { error: updateError } = await updateQuery;
+          if (updateError) {
+            console.error('임시 ID 변경 오류:', updateError);
+          }
+        }
+        
+        // 임시 ID에서 최종 ID로 변경
+        for (const update of updates) {
+          let finalUpdateQuery = supabase
+            .from('todo_list')
+            .update({ id: update.new_id })
+            .eq('id', update.new_id + 10000);
+            
+          if (group === '정기업무' && month) {
+            finalUpdateQuery = finalUpdateQuery.eq('month', month);
+          }
+          
+          const { error: finalUpdateError } = await finalUpdateQuery;
+          if (finalUpdateError) {
+            console.error('최종 ID 변경 오류:', finalUpdateError);
+          }
+        }
+        
+        console.log(`${group}${month ? ' ' + month + '월' : ''} ID 정규화 완료`);
+      } else {
+        console.log(`${group}${month ? ' ' + month + '월' : ''} ID 정규화 필요 없음`);
+      }
+    } catch (error) {
+      console.error('그룹 ID 정규화 오류:', error);
     }
   };
 
@@ -585,12 +696,17 @@ export default function Home() {
         selectedItemId = monthlyTasks[month][index].id || null;
       }
       
+      if (!selectedItemId) {
+        console.error('선택된 항목 ID를 찾을 수 없음');
+        return;
+      }
+      
       console.log('선택된 항목 ID:', selectedItemId);
       
       // Supabase 쿼리 빌더 초기화
       let query = supabase
         .from('todo_list')
-        .select('id, todo')
+        .select('*')
         .eq('group', group)
         .order('id');
       
@@ -602,47 +718,56 @@ export default function Home() {
         query = query.is('month', null);
       }
       
-      const { data: existingData, error: fetchError } = await query;
+      const { data: items, error: fetchError } = await query;
 
-      if (fetchError || !existingData || existingData.length < 2) {
+      if (fetchError || !items || items.length < 2) {
         console.error('데이터 조회 오류:', fetchError);
         return;
       }
 
-      console.log('조회된 데이터:', existingData);
-
-      const currentId = existingData[index].id;
-      const prevId = existingData[index - 1].id;
-      const currentTodo = existingData[index].todo;
-      const prevTodo = existingData[index - 1].todo;
-
-      console.log('교환할 항목:', { 
-        current: { id: currentId, todo: currentTodo },
-        prev: { id: prevId, todo: prevTodo }
-      });
-
-      // ID에 해당하는 항목을 저장
-      if (group === '당면업무') {
-        setSelectedUrgentId(currentId);
-      } else if (group === '일상업무') {
-        setSelectedRoutineId(currentId);
-      } else if (group === '정기업무') {
-        setSelectedMonthlyId(currentId);
+      // 현재 인덱스와 이전 인덱스 항목 찾기
+      const currentItem = items[index];
+      const prevItem = items[index - 1];
+      
+      if (!currentItem || !prevItem) {
+        console.error('이동할 항목을 찾을 수 없음');
+        return;
       }
-
+      
+      console.log('이동할 항목:', { 
+        current: currentItem,
+        prev: prevItem
+      });
+      
+      // 선택된 항목의 ID를 유지
+      if (group === '당면업무') {
+        setSelectedUrgentId(selectedItemId);
+        // 인덱스를 하나 감소 (위로 이동)
+        setSelectedUrgentIndex(index - 1);
+      } else if (group === '일상업무') {
+        setSelectedRoutineId(selectedItemId);
+        setSelectedRoutineIndex(index - 1);
+      } else if (group === '정기업무') {
+        setSelectedMonthlyId(selectedItemId);
+        setSelectedMonthlyIndex(index - 1);
+      }
+      
+      // 위로 이동할 항목과 현재 항목 사이의 순서값 계산
+      const newPosition = prevItem.id;
+      
+      // 선택된 항목 위치 변경 (ID는 유지)
       const { error: updateError } = await supabase
         .from('todo_list')
-        .upsert([
-          { id: currentId, todo: prevTodo },
-          { id: prevId, todo: currentTodo }
-        ]);
-
+        .update({ id: newPosition - 0.5 })
+        .eq('id', selectedItemId);
+        
       if (updateError) {
         console.error('위치 변경 오류:', updateError);
-      } else {
-        console.log('위치 변경 성공, 데이터 다시 로드');
-        await loadTodos(); // 데이터 다시 로드
+        return;
       }
+      
+      // 데이터 다시 로드하여 변경사항 적용
+      await loadTodos();
     } catch (error) {
       console.error('예상치 못한 오류:', error);
     }
@@ -664,12 +789,17 @@ export default function Home() {
         selectedItemId = monthlyTasks[month][index].id || null;
       }
       
+      if (!selectedItemId) {
+        console.error('선택된 항목 ID를 찾을 수 없음');
+        return;
+      }
+      
       console.log('선택된 항목 ID:', selectedItemId);
       
       // Supabase 쿼리 빌더 초기화
       let query = supabase
         .from('todo_list')
-        .select('id, todo')
+        .select('*')
         .eq('group', group)
         .order('id');
       
@@ -681,47 +811,56 @@ export default function Home() {
         query = query.is('month', null);
       }
       
-      const { data: existingData, error: fetchError } = await query;
+      const { data: items, error: fetchError } = await query;
 
-      if (fetchError || !existingData || index >= existingData.length - 1) {
+      if (fetchError || !items || index >= items.length - 1) {
         console.error('데이터 조회 오류:', fetchError);
         return;
       }
 
-      console.log('조회된 데이터:', existingData);
-
-      const currentId = existingData[index].id;
-      const nextId = existingData[index + 1].id;
-      const currentTodo = existingData[index].todo;
-      const nextTodo = existingData[index + 1].todo;
-
-      console.log('교환할 항목:', { 
-        current: { id: currentId, todo: currentTodo },
-        next: { id: nextId, todo: nextTodo }
-      });
-
-      // ID에 해당하는 항목을 저장
-      if (group === '당면업무') {
-        setSelectedUrgentId(currentId);
-      } else if (group === '일상업무') {
-        setSelectedRoutineId(currentId);
-      } else if (group === '정기업무') {
-        setSelectedMonthlyId(currentId);
+      // 현재 인덱스와 다음 인덱스 항목 찾기
+      const currentItem = items[index];
+      const nextItem = items[index + 1];
+      
+      if (!currentItem || !nextItem) {
+        console.error('이동할 항목을 찾을 수 없음');
+        return;
       }
-
+      
+      console.log('이동할 항목:', { 
+        current: currentItem,
+        next: nextItem
+      });
+      
+      // 선택된 항목의 ID를 유지
+      if (group === '당면업무') {
+        setSelectedUrgentId(selectedItemId);
+        // 인덱스를 하나 증가 (아래로 이동)
+        setSelectedUrgentIndex(index + 1);
+      } else if (group === '일상업무') {
+        setSelectedRoutineId(selectedItemId);
+        setSelectedRoutineIndex(index + 1);
+      } else if (group === '정기업무') {
+        setSelectedMonthlyId(selectedItemId);
+        setSelectedMonthlyIndex(index + 1);
+      }
+      
+      // 아래로 이동할 항목과 현재 항목 사이의 순서값 계산
+      const newPosition = nextItem.id;
+      
+      // 선택된 항목 위치 변경 (ID는 유지)
       const { error: updateError } = await supabase
         .from('todo_list')
-        .upsert([
-          { id: currentId, todo: nextTodo },
-          { id: nextId, todo: currentTodo }
-        ]);
-
+        .update({ id: newPosition + 0.5 })
+        .eq('id', selectedItemId);
+        
       if (updateError) {
         console.error('위치 변경 오류:', updateError);
-      } else {
-        console.log('위치 변경 성공, 데이터 다시 로드');
-        await loadTodos(); // 데이터 다시 로드
+        return;
       }
+      
+      // 데이터 다시 로드하여 변경사항 적용
+      await loadTodos();
     } catch (error) {
       console.error('예상치 못한 오류:', error);
     }
