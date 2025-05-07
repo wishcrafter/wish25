@@ -66,6 +66,23 @@ function TaskCell({
   placeholder: string;
 }) {
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  
+  const handleRowClick = (index: number) => {
+    setSelectedIndex(index);
+  };
+  
+  const handleMoveUp = () => {
+    if (selectedIndex !== null && selectedIndex > 0) {
+      onMoveUp(selectedIndex);
+    }
+  };
+  
+  const handleMoveDown = () => {
+    if (selectedIndex !== null && selectedIndex < tasks.length - 1) {
+      onMoveDown(selectedIndex);
+    }
+  };
   
   return (
     <div className="summary-card">
@@ -74,14 +91,14 @@ function TaskCell({
         <div className="flex space-x-1">
           <button 
             className="btn btn-outline btn-sm"
-            onClick={() => focusedIndex !== null && onMoveUp(focusedIndex)}
-            disabled={focusedIndex === null || focusedIndex === 0}
+            onClick={handleMoveUp}
+            disabled={selectedIndex === null || selectedIndex === 0}
             title="선택 항목 위로 이동"
           >▲</button>
           <button 
             className="btn btn-outline btn-sm"
-            onClick={() => focusedIndex !== null && onMoveDown(focusedIndex)}
-            disabled={focusedIndex === null || focusedIndex === tasks.length - 1}
+            onClick={handleMoveDown}
+            disabled={selectedIndex === null || selectedIndex === tasks.length - 1}
             title="선택 항목 아래로 이동"
           >▼</button>
           <button 
@@ -95,7 +112,11 @@ function TaskCell({
       </div>
       <div>
         {tasks.map((task, index) => (
-          <div key={`task-${index}`} className={`task-row-flex ${focusedIndex === index ? 'border-blue-500' : ''}`}>
+          <div 
+            key={`task-${index}`} 
+            className={`task-row-flex ${selectedIndex === index ? 'bg-blue-100 border-blue-500' : ''}`}
+            onClick={() => handleRowClick(index)}
+          >
             <input
               type="text"
               value={task.content || ''}
@@ -104,17 +125,24 @@ function TaskCell({
               className={`form-input flex-1 ${task.isDirty ? 'border-yellow-500' : ''}`}
               onFocus={() => setFocusedIndex(index)}
               onBlur={() => setFocusedIndex(null)}
+              onClick={(e) => e.stopPropagation()} // 부모 div의 클릭 이벤트 전파 방지
             />
-            <div className="task-controls-horizontal">
+            <div className="task-controls-horizontal" onClick={(e) => e.stopPropagation()}>
               <button 
                 className={`btn ${task.isDirty ? 'btn-warning' : 'btn-success'} btn-sm`}
-                onClick={() => onSave(index)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSave(index);
+                }}
                 title="저장"
                 disabled={!task.isDirty}
               >저장</button>
               <button 
                 className="btn btn-outline btn-sm"
-                onClick={() => onDelete(index)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(index);
+                }}
                 title="항목 삭제"
               >삭제</button>
             </div>
@@ -150,7 +178,29 @@ function MonthlyTaskCell({
   onChangeMonth: (month: number) => void;
 }) {
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const activeTasks = monthlyTasks[activeMonth] || [];
+  
+  const handleRowClick = (index: number) => {
+    setSelectedIndex(index);
+  };
+  
+  const handleMoveUp = () => {
+    if (selectedIndex !== null && selectedIndex > 0) {
+      onMoveUp(activeMonth, selectedIndex);
+    }
+  };
+  
+  const handleMoveDown = () => {
+    if (selectedIndex !== null && selectedIndex < activeTasks.length - 1) {
+      onMoveDown(activeMonth, selectedIndex);
+    }
+  };
+  
+  // 월이 변경되면 선택된 항목 초기화
+  useEffect(() => {
+    setSelectedIndex(null);
+  }, [activeMonth]);
   
   return (
     <div className="summary-card">
@@ -159,14 +209,14 @@ function MonthlyTaskCell({
         <div className="flex space-x-1">
           <button 
             className="btn btn-outline btn-sm"
-            onClick={() => focusedIndex !== null && onMoveUp(activeMonth, focusedIndex)}
-            disabled={focusedIndex === null || focusedIndex === 0}
+            onClick={handleMoveUp}
+            disabled={selectedIndex === null || selectedIndex === 0}
             title="선택 항목 위로 이동"
           >▲</button>
           <button 
             className="btn btn-outline btn-sm"
-            onClick={() => focusedIndex !== null && onMoveDown(activeMonth, focusedIndex)}
-            disabled={focusedIndex === null || focusedIndex === activeTasks.length - 1}
+            onClick={handleMoveDown}
+            disabled={selectedIndex === null || selectedIndex === activeTasks.length - 1}
             title="선택 항목 아래로 이동"
           >▼</button>
           <button 
@@ -191,7 +241,11 @@ function MonthlyTaskCell({
       </div>
       <div>
         {activeTasks.map((task, index) => (
-          <div key={`monthly-${activeMonth}-${index}`} className={`task-row-flex ${focusedIndex === index ? 'border-blue-500' : ''}`}>
+          <div 
+            key={`monthly-${activeMonth}-${index}`} 
+            className={`task-row-flex ${selectedIndex === index ? 'bg-blue-100 border-blue-500' : ''}`}
+            onClick={() => handleRowClick(index)}
+          >
             <input
               type="text"
               value={task.content || ''}
@@ -200,17 +254,24 @@ function MonthlyTaskCell({
               className={`form-input flex-1 ${task.isDirty ? 'border-yellow-500' : ''}`}
               onFocus={() => setFocusedIndex(index)}
               onBlur={() => setFocusedIndex(null)}
+              onClick={(e) => e.stopPropagation()}
             />
-            <div className="task-controls-horizontal">
+            <div className="task-controls-horizontal" onClick={(e) => e.stopPropagation()}>
               <button 
                 className={`btn ${task.isDirty ? 'btn-warning' : 'btn-success'} btn-sm`}
-                onClick={() => onSave(activeMonth, index)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSave(activeMonth, index);
+                }}
                 title="저장"
                 disabled={!task.isDirty}
               >저장</button>
               <button 
                 className="btn btn-outline btn-sm"
-                onClick={() => onDelete(activeMonth, index)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(activeMonth, index);
+                }}
                 title="항목 삭제"
               >삭제</button>
             </div>
