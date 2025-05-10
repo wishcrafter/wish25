@@ -1,5 +1,7 @@
 {
-  "/api/supabase/route": "app/api/supabase/route.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/page": "app/page.js",
   "/dashboard/page": "app/dashboard/page.js",
-  "/page": "app/page.js"
+  "/management/sales/page": "app/management/sales/page.js",
+  "/login/page": "app/login/page.js"
 }

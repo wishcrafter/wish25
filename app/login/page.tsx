@@ -40,7 +40,7 @@ export default function LoginPage() {
       <div className="login-title">
         <h1 className="company-name">주식회사 위시크래프터</h1>
         <h2 className="system-name">정산 관리 시스템</h2>
-        <p className="english-name">Wiscrafter Corp. Settlement Management System</p>
+        <p className="english-name">Wishcrafter Corp. Settlement Management System</p>
       </div>
       
       <div className="form-container">
