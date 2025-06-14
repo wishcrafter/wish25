@@ -320,7 +320,21 @@ export default function DashboardContent() {
           wstudioResponse
         ] = await Promise.all([
           fetchData('stores', { orderBy: 'store_id' }),
-          fetchData('sales', {}),
+          fetchData('sales', {
+            select: `
+              store_id,
+              sales_date,
+              total_amount,
+              card_amount,
+              cash_amount,
+              etc_amount,
+              transaction_count,
+              updated_at,
+              stores (store_name)
+            `,
+            orderBy: 'sales_date',
+            ascending: false
+          }),
           fetchData('purchases', {}),
           fetchData('expenses', { 
             select: `
